@@ -1,20 +1,20 @@
 import {env} from 'cloudflare:workers';
-import {getChatGPTUser} from '../../chatgpt-auth';
+import {getAppUser} from '../../app-auth';
 // Shared validation keeps browser imports and API writes on the same rules.
 import {blank,load} from '../../../public/domain.js';
 export const dynamic='force-dynamic';
 const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
-export async function GET() {
-  const user=await getChatGPTUser();
+export async function GET(request:Request) {
+  let user;try{user=await getAppUser(request);}catch(error){if(error instanceof Response)return error;return json({error:'Sesi tidak dapat dimuat.'},503);}
   if(!user)return json({user:null,state:blank(),revision:0});
   try {
     if(!env.DB)return json({error:'Penyimpanan belum tersedia.'},503);
     const row=await env.DB.prepare('SELECT state,revision FROM records WHERE user_id=?').bind(user.userId).first<{state:string;revision:number}>();
-    return json({user:{name:user.displayName,email:user.email},state:row?load({getItem:()=>row.state}):blank(),revision:row?.revision??0});
+    return json({user:{id:user.userId,name:user.displayName,email:user.email,provider:user.provider},state:row?load({getItem:()=>row.state}):blank(),revision:row?.revision??0});
   }catch {return json({error:'Data tidak dapat dimuat. Silakan coba lagi; data Anda tidak dihapus.'},503);}
 }
 export async function PUT(request:Request) {
-  const user=await getChatGPTUser();
+  let user;try{user=await getAppUser(request);}catch(error){if(error instanceof Response)return error;return json({error:'Sesi tidak dapat dimuat.'},503);}
   if(!user)return json({error:'Masuk terlebih dahulu.'},401);
   const origin=request.headers.get('origin');
   if(!origin||origin!==new URL(request.url).origin)return json({error:'Asal permintaan tidak sesuai.'},403);

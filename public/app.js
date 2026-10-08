@@ -1,6 +1,16 @@
 import {CATEGORIES,TYPES,STATUSES,HEADERS,today,money,amount,validDate,days,blank,transaction,validateLinks,duplicate,summary,parseCSV,csvExport,load,demo} from './domain.js';
 
 const root=document.querySelector('#app'), modal=document.querySelector('#modal');
+const auth=window.uangflowAuth?.auth;
+async function apiFetch(path,options={}) {
+  const headers=new Headers(options.headers);
+  if(auth){
+    const {data,error}=await auth.getSession();if(error)throw error;
+    if(options.method&&((data.session&&user?.id!=='supabase:'+data.session.user.id)||(!data.session&&user?.provider==='supabase')))throw Error('Akun berubah. Unduh salinan perubahan sebelum memuat ulang.');
+    if(data.session)headers.set('Authorization','Bearer '+data.session.access_token);
+  }
+  return fetch(path,{...options,headers});
+}
 const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID();
 const icons={home:'M3 10 12 3l9 7v10H3Z M9 20v-7h6v7',wallet:'M3 6h18v15H3Z M3 6V3h15v3 M16 12h5v5h-5Z',chart:'M4 20V10h4v10 M10 20V4h4v16 M16 20v-7h4v7',goal:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10 M12 12h.01',spark:'m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z',settings:'M4 6h16 M4 12h16 M4 18h16 M8 3v6 M16 9v6 M10 15v6',upload:'M12 16V3 m-5 5 5-5 5 5 M4 15v6h16v-6',plus:'M12 5v14 M5 12h14',arrow:'M7 17 17 7 M7 7h10v10',check:'m5 12 4 4 10-10',leaf:'M20 3C5 3 2 8 5 15s15 4 15-12 M4 20 15 9',logout:'M10 3H3v18h7 M8 12h13 m-4-4 4 4-4 4'};
@@ -18,21 +28,21 @@ async function commit(next) {
   if(saving)throw Error('Tunggu hingga penyimpanan selesai.');
   next=load({getItem:()=>JSON.stringify(next)});
   if(isDemo){state=next;render();return;}
-  if(!user)throw Error('Masuk dengan ChatGPT untuk menyimpan data.');
+  if(!user)throw Error('Masuk terlebih dahulu untuk menyimpan data.');
   saving=true;syncError='';document.querySelector('#sync')?.replaceChildren(document.createTextNode('Menyimpan…'));
   try {
-    const response=await fetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:next,revision})});
+    const response=await apiFetch('/api/state',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:next,revision})});
     const result=await response.json();if(!response.ok)throw Error(result.error||'Gagal menyimpan.');
     revision=result.revision;state=next;personal=next;pendingChanges=null;toast('Tersimpan di akun Anda.');
   }catch(error){pendingChanges=next;syncError=error.message;throw error;}finally{saving=false;document.querySelector('#sync')?.replaceChildren(document.createTextNode(syncError?'Belum tersimpan':'Tersimpan di akun'));}
 }
 function welcome(){
-  return `<main id="main" class="welcome"><div class="brand">${icon('leaf')} UangFlow<span class="badge">UNTUK MAHASISWA</span></div><div class="welcome-grid"><section><span class="eyebrow">SEDIKIT CATATAN. LEBIH BANYAK KENDALI.</span><h1>Uang sakumu.<br><em>Rencana besarmu.</em></h1><p class="lead">Kenali pengeluaranmu, atur anggaran harian, dan buat ruang untuk hal yang kamu impikan.</p><div class="actions">${user?button('onboard','Atur uang sakumu '+icon('arrow')):'<a class="primary" href="/signin-with-chatgpt?return_to=%2F" target="_top">Masuk dengan ChatGPT '+icon('arrow')+'</a>'}${button('demo','Coba demo','secondary')}</div><p class="muted">${user?'Akun Anda siap. Mulai dengan rencana sederhana.':'Masuk untuk menyimpan dan mengakses data di perangkat lain.'}</p><div class="feature-list"><span>${icon('check')} Pencatatan & impor CSV</span><span>${icon('check')} Anggaran dalam rupiah</span><span>${icon('check')} Data terpisah per akun</span></div></section><section class="welcome-preview" aria-label="Contoh ringkasan"><span class="eyebrow">CONTOH DATA FIKTIF</span><p>Anggaran harianmu</p><div class="preview-money">Rp57.850<span>/ hari</span></div><div class="mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="preview-bottom">${icon('goal')} Sedikit demi sedikit, jadi bukit.</div></section></div><p class="notice">QRIS otomatis belum tersedia. Catat transaksi atau impor CSV; ringkasan bukan saldo bank terverifikasi.</p></main>`;
+  return `<main id="main" class="welcome"><div class="brand">${icon('leaf')} UangFlow<span class="badge">UNTUK MAHASISWA</span></div><div class="welcome-grid"><section><span class="eyebrow">SEDIKIT CATATAN. LEBIH BANYAK KENDALI.</span><h1>Uang sakumu.<br><em>Rencana besarmu.</em></h1><p class="lead">Kenali pengeluaranmu, atur anggaran harian, dan buat ruang untuk hal yang kamu impikan.</p><div class="actions">${user?button('onboard','Atur uang sakumu '+icon('arrow')):button('signin','Masuk '+icon('arrow'))+button('signup','Buat akun','secondary')}${button('demo','Coba demo','secondary')}${user?button('signout','Keluar','text-link'):''}${pendingChanges?button('backup','Unduh perubahan belum tersimpan','secondary'):''}</div><p class="muted">${user?'Akun Anda siap. Mulai dengan rencana sederhana.':'Masuk untuk menyimpan dan mengakses data di perangkat lain.'}</p><div class="feature-list"><span>${icon('check')} Pencatatan & impor CSV</span><span>${icon('check')} Anggaran dalam rupiah</span><span>${icon('check')} Data terpisah per akun</span></div></section><section class="welcome-preview" aria-label="Contoh ringkasan"><span class="eyebrow">CONTOH DATA FIKTIF</span><p>Anggaran harianmu</p><div class="preview-money">Rp57.850<span>/ hari</span></div><div class="mini-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="preview-bottom">${icon('goal')} Sedikit demi sedikit, jadi bukit.</div></section></div><p class="notice">QRIS otomatis belum tersedia. Catat transaksi atau impor CSV; ringkasan bukan saldo bank terverifikasi.</p></main>`;
 }
 function render(){
   if(!state.onboarded && page!=='settings'){root.innerHTML=welcome();return;}
   const active=pages[page]||pages.dashboard;
-  root.innerHTML=`<aside class="sidebar"><a href="#dashboard" class="brand">${icon('leaf')} UangFlow</a><span class="nav-label">RUANG KEUANGANMU</span><nav aria-label="Navigasi utama">${Object.entries(pages).map(([key,[label,glyph]])=>`<button data-page="${key}" class="nav-item ${page===key?'active':''}" ${page===key?'aria-current="page"':''}>${icon(glyph)}<span>${label}</span></button>`).join('')}</nav><div class="sidebar-note">${icon('leaf')}<strong>Pelan-pelan, tetap maju.</strong><p>Setiap catatan adalah langkah kecil untuk rencana besarmu.</p></div><div class="account"><span class="avatar">${isDemo?'D':escape((user?.name||'U').slice(0,1).toUpperCase())}</span><div><strong>${isDemo?'Mode demo':'Akun pribadi'}</strong><small id="sync">${isDemo?'Data fiktif • tidak disimpan':syncError?'Belum tersimpan':'Tersimpan di akun'}</small></div></div></aside><div class="workspace"><header class="topbar"><span>Keuangan pribadi <span class="divider">/</span> <strong>${active[0]}</strong></span><div>${isDemo?button('exit-demo','Keluar demo','secondary small'):'<a class="text-link" href="/signout-with-chatgpt?return_to=%2F" target="_top">Keluar '+icon('logout')+'</a>'}<span class="date-pill">${dateLabel(today())}</span></div></header>${isDemo?'<div class="demo-banner">Anda menggunakan data fiktif. Perubahan demo tidak menyentuh akun pribadi.</div>':''}<main id="main" tabindex="-1">${({dashboard:dashboard,transactions:transactions,budget:budget,goals:goals,coach:coach,imports:imports,settings:settings}[page]||dashboard)()}</main><footer>UangFlow · Dibuat untuk langkah kecilmu <span>Estimasi berdasarkan catatan, bukan saldo bank.</span></footer></div>`;
+  root.innerHTML=`<aside class="sidebar"><a href="#dashboard" class="brand">${icon('leaf')} UangFlow</a><span class="nav-label">RUANG KEUANGANMU</span><nav aria-label="Navigasi utama">${Object.entries(pages).map(([key,[label,glyph]])=>`<button data-page="${key}" class="nav-item ${page===key?'active':''}" ${page===key?'aria-current="page"':''}>${icon(glyph)}<span>${label}</span></button>`).join('')}</nav><div class="sidebar-note">${icon('leaf')}<strong>Pelan-pelan, tetap maju.</strong><p>Setiap catatan adalah langkah kecil untuk rencana besarmu.</p></div><div class="account"><span class="avatar">${isDemo?'D':escape((user?.name||'U').slice(0,1).toUpperCase())}</span><div><strong>${isDemo?'Mode demo':'Akun pribadi'}</strong><small id="sync">${isDemo?'Data fiktif • tidak disimpan':syncError?'Belum tersimpan':'Tersimpan di akun'}</small></div></div></aside><div class="workspace"><header class="topbar"><span>Keuangan pribadi <span class="divider">/</span> <strong>${active[0]}</strong></span><div>${isDemo?button('exit-demo','Keluar demo','secondary small'):button('signout','Keluar '+icon('logout'),'text-link')}<span class="date-pill">${dateLabel(today())}</span></div></header>${isDemo?'<div class="demo-banner">Anda menggunakan data fiktif. Perubahan demo tidak menyentuh akun pribadi.</div>':''}<main id="main" tabindex="-1">${({dashboard:dashboard,transactions:transactions,budget:budget,goals:goals,coach:coach,imports:imports,settings:settings}[page]||dashboard)()}</main><footer>UangFlow · Dibuat untuk langkah kecilmu <span>Estimasi berdasarkan catatan, bukan saldo bank.</span></footer></div>`;
 }
 function heading(kicker,title,subtitle,action=''){return `<div class="page-heading"><div><span class="eyebrow">${kicker}</span><h1>${title}</h1><p>${subtitle}</p></div>${action}</div>`;}
 function txTable(list,compact=false){
@@ -78,6 +88,40 @@ function imports(){
   return `${heading('IMPOR & PERIKSA','Catatan lama, awal yang rapi.','Gunakan format contoh CSV. Format setiap bank dapat berbeda.',button('sample','Unduh contoh CSV','secondary'))}<section class="panel"><div class="upload-box">${icon('upload')}<h2>Pilih file transaksi CSV</h2><p>Maksimal 1 MB dan 1.000 baris. Nominal rupiah bulat tanpa pemisah ribuan.</p><label class="file-label">Pilih file<input id="csv-file" type="file" accept=".csv,text/csv"></label></div><p class="muted">Jenis: expense, income, transfer, refund. Status: completed, pending, failed. Tanggal: YYYY-MM-DD. Pengembalian dapat dihubungkan ke transaksi asli setelah impor.</p>${checked.length?`<div class="panel-heading"><h2>Tinjau ${checked.length} baris</h2><span class="badge">${checked.filter(r=>r.error).length} perlu koreksi</span></div><p class="notice">Baris yang ditandai kemungkinan duplikat tidak dihapus otomatis. Koreksi kolom lalu keluar dari kolom untuk memvalidasi ulang, atau hilangkan centang sebelum impor.</p><div class="table-wrap"><table class="import-table"><thead><tr><th>Impor</th>${HEADERS.map(h=>`<th>${h}</th>`).join('')}<th>Pemeriksaan</th></tr></thead><tbody>${checked.map((r,i)=>`<tr><td><input type="checkbox" data-import-index="${i}" data-include ${r.included?'checked':''} aria-label="Sertakan baris ${i+1}"></td>${HEADERS.map(h=>`<td><input data-import-index="${i}" data-column="${h}" aria-label="Baris ${i+1} ${h}" value="${escape(r.raw[h])}" maxlength="200"></td>`).join('')}<td class="import-note ${r.error?'negative':r.possible?'warning':'positive'}">${escape(r.error|| (r.possible?'Kemungkinan duplikat':'Valid'))}</td></tr>`).join('')}</tbody></table></div><div class="form-actions">${button('import-confirm','Simpan baris terpilih')}${button('import-cancel','Batalkan','secondary')}</div>`:''}</section>`;
 }
 function openDialog(html){modal.innerHTML=`<div class="dialog-heading"><span class="eyebrow">UANGFLOW</span><button class="icon-button" data-action="close-modal" aria-label="Tutup">×</button></div>${html}`;modal.showModal();}
+function authDialog(mode='signin') {
+  const titles={signin:'Masuk ke UangFlow',signup:'Buat akun UangFlow',reset:'Lupa password?',update:'Buat password baru'};
+  openDialog(`<h2>${titles[mode]}</h2><p>${mode==='signup'?'Mulai catat uangmu dengan akun pribadi.':mode==='reset'?'Kami akan mengirim tautan pemulihan ke emailmu.':mode==='update'?'Simpan password baru untuk akunmu.':'Selamat datang kembali.'}</p>
+    ${!auth?'<p class="notice">Login email dan Google sedang disiapkan. Untuk sementara, gunakan ChatGPT atau coba demo.</p>':`<form id="auth-form" data-mode="${mode}">
+      ${mode==='signup'?input('name','Nama', '', 'text','autocomplete="name" maxlength="80" required'):''}
+      ${mode!=='update'?input('email','Email','','email','autocomplete="email" maxlength="254" required'):''}
+      ${mode!=='reset'?input('password',mode==='update'?'Password baru':'Password','','password',`autocomplete="${mode==='signin'?'current-password':'new-password'}" minlength="${mode==='signin'?1:12}" maxlength="128" required`):''}
+      ${mode==='signup'||mode==='update'?input('confirm','Ulangi password','','password','autocomplete="new-password" minlength="12" maxlength="128" required'):''}
+      ${mode==='signup'||mode==='update'?'<p class="muted">Gunakan minimal 12 karakter dan password yang berbeda dari akun lain.</p>':''}
+      <p class="form-error" role="alert"></p><p class="auth-message" role="status"></p>
+      <button class="primary auth-wide" type="submit">${({signin:'Masuk',signup:'Daftar akun',reset:'Kirim tautan pemulihan',update:'Simpan password'})[mode]}</button>
+    </form>`}
+    ${mode==='signin'||mode==='signup'?`<div class="auth-providers">${auth&&window.uangflowGoogle?button('google-signin','Lanjutkan dengan Google','secondary auth-wide'):''}<a class="secondary auth-wide" href="/signin-with-chatgpt?return_to=%2F" target="_top">Lanjutkan dengan ChatGPT</a></div><div class="auth-links">${mode==='signin'?button('signup','Belum punya akun? Daftar','text-link')+ (auth?button('reset-password','Lupa password?','text-link'):''):button('signin','Sudah punya akun? Masuk','text-link')}</div>`:mode==='reset'?button('signin','Kembali ke halaman masuk','text-link'):''}`);
+}
+async function submitAuth(form) {
+  if(!auth)throw Error('Login email belum diaktifkan.');
+  const data=Object.fromEntries(new FormData(form)),mode=form.dataset.mode,submit=form.querySelector('[type=submit]'),error=form.querySelector('.form-error'),message=form.querySelector('.auth-message');
+  submit.disabled=true;error.textContent='';message.textContent='';
+  try{
+    if((mode==='signup'||mode==='update')&&data.password!==data.confirm)throw Error('Kedua password harus sama.');
+    let result;
+    if(mode==='signin')result=await auth.signInWithPassword({email:data.email.trim(),password:data.password});
+    if(mode==='signup')result=await auth.signUp({email:data.email.trim(),password:data.password,options:{data:{full_name:data.name.trim()},emailRedirectTo:location.origin+'/'}});
+    if(mode==='reset')result=await auth.resetPasswordForEmail(data.email.trim(),{redirectTo:location.origin+'/?auth=recovery'});
+    if(mode==='update')result=await auth.updateUser({password:data.password});
+    if(result?.error)throw result.error;
+    form.reset();
+    if(mode==='signup'){message.textContent='Jika pendaftaran dapat diproses, email verifikasi akan dikirim. Periksa inbox dan folder spam.';return;}
+    if(mode==='reset'){message.textContent='Jika email terdaftar, tautan pemulihan akan dikirim. Periksa inbox dan folder spam.';return;}
+    if(mode==='update')window.uangflowRecovery=false;
+    modal.close();isDemo=false;importRows=[];coachAnswer='';page='dashboard';await init();toast(mode==='update'?'Password berhasil diperbarui.':'Berhasil masuk.');
+  }catch(e){error.textContent=e.message==='Invalid login credentials'?'Email atau password tidak sesuai.':e.message;}
+  finally{submit.disabled=false;}
+}
 function transactionDialog(id='',preset={}){
   const existing=state.transactions.find(t=>t.id===id),t=existing||{date:today(),amount:'',type:'expense',category:'Lainnya',status:'completed',description:'',reference:'',source:'manual',...preset};
   openDialog(`<h2>${existing?'Ubah':'Catat'} transaksi</h2><form id="tx-form" data-id="${escape(id)}"><div class="form-grid">${input('description','Deskripsi',t.description,'text','required maxlength="200"')}${input('amount','Nominal (Rp)',t.amount,'number','min="1" max="1000000000" step="1" required')}${input('date','Tanggal',t.date,'date','required')}${select('type','Jenis',TYPES,t.type)}${select('category','Kategori',CATEGORIES,t.category)}${select('status','Status',STATUSES,t.status)}${input('reference','Referensi (opsional)',t.reference,'text','maxlength="200"')}${select('refundOf','Pengeluaran asli (untuk pengembalian)',Object.fromEntries(state.transactions.filter(x=>x.type==='expense'&&x.status==='completed'&&x.id!==id).map(x=>[x.id,x.description+' · '+money(x.amount)])),t.refundOf,'Tidak dihubungkan')}${select('billId','Tagihan (untuk pengeluaran)',Object.fromEntries(state.bills.map(b=>[b.id,b.name])),t.billId,'Tidak dihubungkan')}${select('goalId','Tabungan (untuk transfer)',Object.fromEntries(state.goals.map(g=>[g.id,g.name])),t.goalId,'Transfer biasa')}</div><p class="muted">Transfer biasa tidak mengubah total dana gabungan. Transfer tabungan memisahkan dana dari uang yang dapat dibelanjakan.</p><p class="form-error" role="alert"></p><div class="form-actions"><button class="primary" type="submit">Simpan transaksi</button>${existing?button('delete-tx','Hapus','danger',`data-id="${escape(id)}"`):''}${button('close-modal','Batal','secondary')}</div></form>`);
@@ -93,13 +137,35 @@ function goalDialog(id=''){
 function download(name,text,type='text/csv;charset=utf-8'){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 async function init(){
   root.innerHTML='<main class="loading" aria-live="polite">Memuat catatanmu…</main>';
-  try{const r=await fetch('/api/state',{cache:'no-store'}),data=await r.json();if(!r.ok)throw Error(data.error||'Gagal memuat.');user=data.user;state=load({getItem:()=>JSON.stringify(data.state)});personal=state;revision=data.revision;render();}
-  catch(e){root.innerHTML=`<main class="welcome"><h1>Catatan belum bisa dimuat.</h1><p>${escape(e.message)}</p><p>Data Anda tidak dihapus. Muat ulang untuk mencoba lagi.</p>${button('reload','Coba lagi')}</main>`;}
+  try{const r=await apiFetch('/api/state',{cache:'no-store'}),data=await r.json();if(!r.ok)throw Error(data.error||'Gagal memuat.');user=data.user;state=load({getItem:()=>JSON.stringify(data.state)});personal=state;revision=data.revision;render();}
+  catch(e){root.innerHTML=`<main class="welcome"><h1>Catatan belum bisa dimuat.</h1><p>${escape(e.message)}</p><p>Data Anda tidak dihapus. Muat ulang untuk mencoba lagi.</p>${button('reload','Coba lagi')} ${button('signin','Masuk kembali','secondary')} ${button('signout','Keluar','text-link')}</main>`;}
 }
+auth?.onAuthStateChange((event,session)=>{
+  setTimeout(()=>{
+    if(event==='PASSWORD_RECOVERY'){window.uangflowRecovery=true;authDialog('update');return;}
+    if(event==='SIGNED_OUT'&&user?.provider==='supabase'){
+      user=null;state=blank();personal=null;isDemo=false;page='dashboard';render();
+      if(pendingChanges)toast('Sesi berakhir. Unduh salinan perubahan sebelum memuat ulang.');
+    }
+    if(event==='SIGNED_IN'&&user?.provider==='supabase'&&user.id!=='supabase:'+session?.user.id){user=null;state=blank();personal=null;isDemo=false;page='dashboard';render();toast('Akun berubah. Masuk kembali untuk memuat catatan.');}
+  },0);
+});
 document.addEventListener('click',async event=>{
   const target=event.target.closest('[data-action],[data-page]');if(!target)return;
   const action=target.dataset.action,id=target.dataset.id;
   try{
+    if(action==='signin'||action==='signup'){authDialog(action);return;}
+    if(action==='reset-password'){authDialog('reset');return;}
+    if(action==='google-signin'){
+      if(!auth||!window.uangflowGoogle)throw Error('Login Google belum diaktifkan.');
+      const {error}=await auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/'}});if(error)throw error;return;
+    }
+    if(action==='signout'){
+      if(saving)throw Error('Tunggu hingga penyimpanan selesai.');
+      if(pendingChanges){download('uangflow-belum-tersimpan.json',JSON.stringify(pendingChanges,null,2),'application/json');if(!confirm('Salinan perubahan sudah diunduh. Keluar dari akun?'))return;}
+      if(auth){const {error}=await auth.signOut({scope:'local'});if(error)throw error;}
+      location.assign('/signout-with-chatgpt?return_to=%2F');return;
+    }
     if(target.dataset.page){page=target.dataset.page;render();window.scrollTo(0,0);document.querySelector('#main')?.focus();return;}
     if(action==='demo'){personal=state;state=demo();isDemo=true;page='dashboard';render();}
     if(action==='exit-demo'){state=personal||blank();isDemo=false;importRows=[];coachAnswer='';page='dashboard';render();}
@@ -137,7 +203,7 @@ document.addEventListener('click',async event=>{
   }catch(e){toast(e.message);}
 });
 document.addEventListener('submit',async event=>{
-  const form=event.target;if(!['settings-form','tx-form','bill-form','goal-form','budget-form','filters','coach-form'].includes(form.id))return;event.preventDefault();
+  const form=event.target;if(form.id==='auth-form'){event.preventDefault();await submitAuth(form);return;}if(!['settings-form','tx-form','bill-form','goal-form','budget-form','filters','coach-form'].includes(form.id))return;event.preventDefault();
   const raw=Object.fromEntries(new FormData(form)),id=form.dataset.id;const submit=form.querySelector('[type=submit]');
   try{
     if(form.id==='filters'){if(raw.from&&raw.to&&raw.from>raw.to)throw Error('Tanggal akhir harus setelah tanggal awal.');filters=raw;render();return;}
@@ -172,4 +238,5 @@ document.addEventListener('change',async event=>{
   }
   if(e.dataset.importIndex!==undefined){const row=importRows[Number(e.dataset.importIndex)];if(e.hasAttribute('data-include'))row.included=e.checked;else{row.raw[e.dataset.column]=e.value;row.shapeError='';}render();}
 });
-init();
+await init();
+if(window.uangflowRecovery)authDialog('update');
