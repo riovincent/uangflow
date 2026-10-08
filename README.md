@@ -1,4 +1,14 @@
-# vinext-starter
+# UangFlow
+
+A full-stack spending tracker and budgeting companion for Indonesian students, with transaction entry, CSV review, budgets, bills, savings goals, and calculation-based money coaching.
+
+The frontend uses Bahasa Indonesia and rupiah. The backend validates account-specific records stored in Cloudflare D1. Hosted authentication is provided by Sites through ChatGPT sign-in.
+
+Read [UANGFLOW.md](UANGFLOW.md) for setup, testing, accounting rules, privacy, and custom-domain instructions. Automatic QRIS capture and live AI are not implemented.
+
+## Framework and hosting reference
+
+The remaining documentation describes the retained Vinext/Sites starter used by this project.
 
 A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
 
