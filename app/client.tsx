@@ -1,7 +1,7 @@
 'use client';
 import {useEffect} from 'react';
 import {createClient,type SupabaseClient} from '@supabase/supabase-js';
-declare global {interface Window {uangflowAuth:SupabaseClient|null;uangflowGoogle:boolean;uangflowRecovery?:boolean;uangflowAuthReady?:boolean}}
+declare global {interface Window {uangflowAuth:SupabaseClient|null;uangflowGoogle:boolean;uangflowRecovery?:boolean;uangflowAuthReady?:boolean;uangflowAuthError?:string}}
 export default function Client() {
   useEffect(()=>{
     if(window.uangflowAuthReady)return;
@@ -14,8 +14,11 @@ export default function Client() {
         const config=await response.json() as {url:string;key:string;google:boolean}|null;
         if(config){
           window.uangflowAuth=createClient(config.url,config.key,{auth:{flowType:'pkce'}});window.uangflowGoogle=config.google;
+          const query=new URLSearchParams(location.search),fragment=new URLSearchParams(location.hash.slice(1));
+          if(query.has('error')||fragment.has('error'))window.uangflowAuthError='Tautan email tidak valid atau sudah kedaluwarsa. Coba masuk jika email sudah dikonfirmasi, atau kirim ulang konfirmasi email.';
           window.uangflowAuth.auth.onAuthStateChange(event=>{if(event==='PASSWORD_RECOVERY')window.uangflowRecovery=true;});
-          const {error}=await window.uangflowAuth.auth.getSession();if(error)throw error;
+          const {error}=await window.uangflowAuth.auth.getSession();
+          if(error)window.uangflowAuthError='Tautan email tidak dapat membuka sesi. Coba masuk dengan email dan password; jika email belum dikonfirmasi, kirim ulang konfirmasi email dan buka tautan terbaru di browser tempat mendaftar.';
         }
       }catch{window.uangflowAuth=null;}
       const script=document.createElement('script');

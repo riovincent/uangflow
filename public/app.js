@@ -89,18 +89,18 @@ function imports(){
 }
 function openDialog(html){modal.innerHTML=`<div class="dialog-heading"><span class="eyebrow">UANGFLOW</span><button class="icon-button" data-action="close-modal" aria-label="Tutup">×</button></div>${html}`;modal.showModal();}
 function authDialog(mode='signin') {
-  const titles={signin:'Masuk ke UangFlow',signup:'Buat akun UangFlow',reset:'Lupa password?',update:'Buat password baru'};
+  const titles={signin:'Masuk ke UangFlow',signup:'Buat akun UangFlow',reset:'Lupa password?',resend:'Kirim ulang konfirmasi email',update:'Buat password baru'};
   openDialog(`<h2>${titles[mode]}</h2><p>${mode==='signup'?'Mulai catat uangmu dengan akun pribadi.':mode==='reset'?'Kami akan mengirim tautan pemulihan ke emailmu.':mode==='update'?'Simpan password baru untuk akunmu.':'Selamat datang kembali.'}</p>
     ${!auth?'<p class="notice">Login email dan Google sedang disiapkan. Untuk sementara, gunakan ChatGPT atau coba demo.</p>':`<form id="auth-form" data-mode="${mode}">
       ${mode==='signup'?input('name','Nama', '', 'text','autocomplete="name" maxlength="80" required'):''}
       ${mode!=='update'?input('email','Email','','email','autocomplete="email" maxlength="254" required'):''}
-      ${mode!=='reset'?input('password',mode==='update'?'Password baru':'Password','','password',`autocomplete="${mode==='signin'?'current-password':'new-password'}" minlength="${mode==='signin'?1:12}" maxlength="128" required`):''}
+      ${mode!=='reset'&&mode!=='resend'?input('password',mode==='update'?'Password baru':'Password','','password',`autocomplete="${mode==='signin'?'current-password':'new-password'}" minlength="${mode==='signin'?1:12}" maxlength="128" required`):''}
       ${mode==='signup'||mode==='update'?input('confirm','Ulangi password','','password','autocomplete="new-password" minlength="12" maxlength="128" required'):''}
       ${mode==='signup'||mode==='update'?'<p class="muted">Gunakan minimal 12 karakter dan password yang berbeda dari akun lain.</p>':''}
       <p class="form-error" role="alert"></p><p class="auth-message" role="status"></p>
-      <button class="primary auth-wide" type="submit">${({signin:'Masuk',signup:'Daftar akun',reset:'Kirim tautan pemulihan',update:'Simpan password'})[mode]}</button>
+      <button class="primary auth-wide" type="submit">${({signin:'Masuk',signup:'Daftar akun',reset:'Kirim tautan pemulihan',resend:'Kirim email konfirmasi',update:'Simpan password'})[mode]}</button>
     </form>`}
-    ${mode==='signin'||mode==='signup'?`<div class="auth-providers">${auth&&window.uangflowGoogle?button('google-signin','Lanjutkan dengan Google','secondary auth-wide'):''}<a class="secondary auth-wide" href="/signin-with-chatgpt?return_to=%2F" target="_top">Lanjutkan dengan ChatGPT</a></div><div class="auth-links">${mode==='signin'?button('signup','Belum punya akun? Daftar','text-link')+ (auth?button('reset-password','Lupa password?','text-link'):''):button('signin','Sudah punya akun? Masuk','text-link')}</div>`:mode==='reset'?button('signin','Kembali ke halaman masuk','text-link'):''}`);
+    ${mode==='signin'||mode==='signup'?`<div class="auth-providers">${auth&&window.uangflowGoogle?button('google-signin','Lanjutkan dengan Google','secondary auth-wide'):''}<a class="secondary auth-wide" href="/signin-with-chatgpt?return_to=%2F" target="_top">Lanjutkan dengan ChatGPT</a></div><div class="auth-links">${mode==='signin'?button('signup','Belum punya akun? Daftar','text-link')+ (auth?button('reset-password','Lupa password?','text-link')+button('resend-confirmation','Kirim ulang konfirmasi email','text-link'):''):button('signin','Sudah punya akun? Masuk','text-link')}</div>`:mode==='reset'||mode==='resend'?button('signin','Kembali ke halaman masuk','text-link'):''}`);
 }
 async function submitAuth(form) {
   if(!auth)throw Error('Login email belum diaktifkan.');
@@ -112,14 +112,16 @@ async function submitAuth(form) {
     if(mode==='signin')result=await auth.signInWithPassword({email:data.email.trim(),password:data.password});
     if(mode==='signup')result=await auth.signUp({email:data.email.trim(),password:data.password,options:{data:{full_name:data.name.trim()},emailRedirectTo:location.origin+'/'}});
     if(mode==='reset')result=await auth.resetPasswordForEmail(data.email.trim(),{redirectTo:location.origin+'/?auth=recovery'});
+    if(mode==='resend')result=await auth.resend({type:'signup',email:data.email.trim(),options:{emailRedirectTo:location.origin+'/'}});
     if(mode==='update')result=await auth.updateUser({password:data.password});
     if(result?.error)throw result.error;
     form.reset();
-    if(mode==='signup'){message.textContent='Jika pendaftaran dapat diproses, email verifikasi akan dikirim. Periksa inbox dan folder spam.';return;}
+    if(mode==='signup'&&!result.data.session){authDialog('signin');modal.querySelector('[name=email]').value=data.email.trim();modal.querySelector('.auth-message').textContent='Jika pendaftaran dapat diproses, email verifikasi akan dikirim. Periksa inbox dan folder spam, konfirmasi email, lalu masuk di sini.';return;}
+    if(mode==='resend'){message.textContent='Jika akun masih menunggu konfirmasi, email verifikasi baru akan dikirim. Gunakan tautan terbaru di inbox atau folder spam.';return;}
     if(mode==='reset'){message.textContent='Jika email terdaftar, tautan pemulihan akan dikirim. Periksa inbox dan folder spam.';return;}
     if(mode==='update')window.uangflowRecovery=false;
     modal.close();isDemo=false;importRows=[];coachAnswer='';page='dashboard';await init();toast(mode==='update'?'Password berhasil diperbarui.':'Berhasil masuk.');
-  }catch(e){error.textContent=e.message==='Invalid login credentials'?'Email atau password tidak sesuai.':e.message;}
+  }catch(e){error.textContent=e.message==='Invalid login credentials'?'Email atau password tidak sesuai.':e.code==='email_not_confirmed'?'Email belum dikonfirmasi. Buka tautan terbaru di inbox atau pilih Kirim ulang konfirmasi email.':e.message;}
   finally{submit.disabled=false;}
 }
 function transactionDialog(id='',preset={}){
@@ -156,6 +158,7 @@ document.addEventListener('click',async event=>{
   try{
     if(action==='signin'||action==='signup'){authDialog(action);return;}
     if(action==='reset-password'){authDialog('reset');return;}
+    if(action==='resend-confirmation'){const email=modal.querySelector('[name=email]')?.value||'';authDialog('resend');modal.querySelector('[name=email]').value=email;return;}
     if(action==='google-signin'){
       if(!auth||!window.uangflowGoogle)throw Error('Login Google belum diaktifkan.');
       const {error}=await auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+'/'}});if(error)throw error;return;
@@ -240,3 +243,4 @@ document.addEventListener('change',async event=>{
 });
 await init();
 if(window.uangflowRecovery)authDialog('update');
+else if(window.uangflowAuthError){authDialog('signin');modal.querySelector('.form-error').textContent=window.uangflowAuthError;}

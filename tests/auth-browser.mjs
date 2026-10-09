@@ -16,13 +16,14 @@ try{
   const id='11111111-1111-4111-8111-111111111111';
   const fakeUser={id,aud:'authenticated',role:'authenticated',email:'student@example.test',email_confirmed_at:new Date().toISOString(),app_metadata:{provider:'email'},user_metadata:{full_name:'Student'}};
   const token=[{alg:'HS256',typ:'JWT'},{sub:id,aud:'authenticated',role:'authenticated',exp:Math.floor(Date.now()/1000)+3600,iss:supabase+'/auth/v1'},'signature'].map((v,i)=>i===2?v:Buffer.from(JSON.stringify(v)).toString('base64url')).join('.');
-  let signupCalls=0,recoveryCalls=0,passwordCalls=0,passwordUpdateCalls=0,googleUrl='',saved=blank(),revision=0;
+  let signupCalls=0,resendCalls=0,recoveryCalls=0,passwordCalls=0,passwordUpdateCalls=0,googleUrl='',saved=blank(),revision=0;
   const reply=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'},body:JSON.stringify(body)});
   await page.route('**/api/auth-config',route=>reply(route,{url:supabase,key:'sb_publishable_test',google:true}));
   await page.route(supabase+'/**',async route=>{
     const request=route.request(),url=new URL(request.url());
     if(request.method()==='OPTIONS')return reply(route,{});
     if(url.pathname.endsWith('/signup')){signupCalls++;assert.equal(request.postDataJSON().email,'student@example.test');return reply(route,{user:{...fakeUser,email_confirmed_at:null},session:null});}
+    if(url.pathname.endsWith('/resend')){resendCalls++;assert.equal(request.postDataJSON().type,'signup');assert.equal(request.postDataJSON().email,'student@example.test');assert.equal(url.searchParams.get('redirect_to'),base+'/');return reply(route,{});}
     if(url.pathname.endsWith('/recover')){recoveryCalls++;return reply(route,{});}
     if(url.pathname.endsWith('/token')){
       const body=request.postDataJSON();
@@ -52,7 +53,9 @@ try{
   await page.getByRole('button',{name:'Daftar akun',exact:true}).click();await page.getByText('Kedua password harus sama.',{exact:true}).waitFor();assert.equal(signupCalls,0);
   await page.locator('#auth-form [name=confirm]').fill('strong-password-123');await page.getByRole('button',{name:'Daftar akun',exact:true}).click();
   await page.locator('.auth-message').filter({hasText:/email verifikasi/}).waitFor();assert.equal(signupCalls,1);
-  await page.getByRole('button',{name:'Sudah punya akun? Masuk'}).click();await page.getByRole('button',{name:'Lupa password?',exact:true}).click();
+  assert.equal(await page.locator('#auth-form').getAttribute('data-mode'),'signin');assert.equal(await page.locator('#auth-form [name=email]').inputValue(),'student@example.test');
+  await page.getByRole('button',{name:'Kirim ulang konfirmasi email',exact:true}).click();await page.getByRole('button',{name:'Kirim email konfirmasi',exact:true}).click();await page.getByText(/email verifikasi baru akan dikirim/).waitFor();assert.equal(resendCalls,1);
+  await page.getByRole('button',{name:'Kembali ke halaman masuk'}).click();await page.getByRole('button',{name:'Lupa password?',exact:true}).click();
   await page.locator('#auth-form [name=email]').fill('student@example.test');await page.getByRole('button',{name:'Kirim tautan pemulihan'}).click();
   await page.locator('.auth-message').filter({hasText:/tautan pemulihan/}).waitFor();assert.equal(recoveryCalls,1);
   await page.getByRole('button',{name:'Kembali ke halaman masuk'}).click();
@@ -67,6 +70,7 @@ try{
   await page.locator('#auth-form [name=password]').fill('updated-password-456');await page.locator('#auth-form [name=confirm]').fill('updated-password-456');await page.getByRole('button',{name:'Simpan password'}).click();
   await page.locator('#modal').waitFor({state:'hidden'});assert.equal(passwordUpdateCalls,1);
   await page.getByRole('button',{name:'Keluar',exact:true}).click();await page.getByRole('button',{name:'Masuk',exact:true}).waitFor();
+  await page.goto(base+'/?error=access_denied&error_code=otp_expired#error=access_denied&error_code=otp_expired');await page.getByRole('heading',{name:'Masuk ke UangFlow',exact:true}).waitFor();await page.getByText(/Tautan email tidak valid atau sudah kedaluwarsa/).waitFor();assert.equal(await page.locator('#auth-form [name=email]').count(),1);await page.getByRole('button',{name:'Tutup',exact:true}).click();
   await page.getByRole('button',{name:'Masuk',exact:true}).click();await page.getByRole('button',{name:'Lanjutkan dengan Google'}).click();
   await page.waitForURL(supabase+'/**');assert.equal(new URL(googleUrl).searchParams.get('provider'),'google');assert.ok(new URL(googleUrl).searchParams.get('code_challenge'));assert.equal(new URL(googleUrl).searchParams.get('code_challenge_method'),'s256');
   assert.deepEqual(errors,[]);console.log('PASS: auth setup fallback, mobile dialog, signup validation, confirmation message, recovery request, rejected login, login token, persistence, logout and Google PKCE handoff (mock provider).');
