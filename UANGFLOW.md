@@ -2,6 +2,8 @@
 
 Aplikasi full-stack berbahasa Indonesia: pencatatan pengeluaran, impor CSV yang dapat dikoreksi, anggaran, tagihan, tabungan, dan pendamping anggaran berbasis perhitungan.
 
+Login berhasil membuka dashboard dan semua menu, termasuk untuk akun baru yang belum mengatur dana awal. Pengaturan dana awal ditawarkan lewat banner tanpa mengunci navigasi. Pendaftaran membuka pilihan login; jika konfirmasi email aktif, pengguna harus mengonfirmasi email sebelum masuk. QRIS otomatis, integrasi bank, dan layanan AI belum tersedia.
+
 ## Jalankan lokal
 
 Gunakan Node.js 24 dan dependensi dari package-lock.json. Jalankan `npm run install:ci`, `npm run build`, lalu terapkan migrasi SQL di `drizzle/` ke database preview sesuai panduan README starter. Jalankan `npm run dev` dan buka alamat yang ditampilkan. Sign-in pada loopback adalah simulasi pengembangan dari starter; sign-in produksi ditangani Sites melalui ChatGPT.

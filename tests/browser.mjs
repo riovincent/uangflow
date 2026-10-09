@@ -21,11 +21,9 @@ try{
   await submit('Catat transaksi');await page.locator('#tx-form [name=description]').fill('Demo only');await page.locator('#tx-form [name=amount]').fill('1000');await submit('Simpan transaksi');
   await page.locator('#modal').waitFor({state:'hidden'});assert.equal(demoWrites,0,'demo never writes to API');
   await submit('Keluar demo');await page.goto(base+'/signin-with-chatgpt?return_to=%2F');
-  await page.waitForFunction(()=>document.querySelector('[data-action=onboard]')||document.querySelector('[data-page=settings]'));
-  if(await page.locator('[data-page=settings]').count()){
-    await nav('Pengaturan');await submit('Hapus semua data keuangan');await page.getByRole('button',{name:/Atur uang sakumu/}).waitFor();
-  }
-  await page.getByRole('button',{name:/Atur uang sakumu/}).click();
+  await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();
+  await nav('Pengaturan');await submit('Hapus semua data keuangan');await page.getByRole('button',{name:'Atur dana awal',exact:true}).waitFor();
+  await submit('Atur dana awal');
   const next=new Date(Date.now()+20*86400000).toISOString().slice(0,10);
   await page.locator('[name=opening]').fill('2000000');await page.locator('[name=nextDate]').fill(next);await submit('Mulai mencatat');
   await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();
@@ -46,6 +44,6 @@ try{
   const downloaded=page.waitForEvent('download');await submit('Ekspor CSV');assert.equal((await downloaded).suggestedFilename(),'uangflow-transaksi.csv');
   const data=await page.evaluate(async()=>await (await fetch('/api/state')).json());assert.equal(data.state.transactions.length,4);assert.equal(data.state.transactions.some(t=>t.description==='Stale update'),false);
   await page.reload();await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();const persisted=await page.evaluate(async()=>await (await fetch('/api/state')).json());assert.equal(persisted.state.transactions.length,4);
-  await nav('Pengaturan');await submit('Hapus semua data keuangan');await page.getByRole('button',{name:/Atur uang sakumu/}).waitFor();
+  await nav('Pengaturan');await submit('Hapus semua data keuangan');await page.getByRole('button',{name:'Atur dana awal',exact:true}).waitFor();
   assert.deepEqual(errors,[]);console.log('PASS: desktop/mobile, all screens, demo isolation, real local login, server persistence, stale writes, transaction escaping, budgets, paid bills, savings, CSV corrections, coach, export, reload, deletion.');
 }finally{await browser.close();}

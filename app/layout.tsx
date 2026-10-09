@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "UangFlow — Kendalikan uangmu",
-  description: "Catat pengeluaran, atur uang saku, dan capai target tabunganmu.",
+  description: "Catat pengeluaran, atur anggaran, dan capai target tabunganmu.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
