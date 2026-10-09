@@ -17,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
-      <head><link rel="stylesheet" href="/styles.css" /></head>
+      <head><meta name="theme-color" content="#08765b"/><link rel="stylesheet" href="/styles.css" /><link rel="modulepreload" href="/app.js" /></head>
       <body>{children}</body>
     </html>
   );
