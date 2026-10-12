@@ -13,6 +13,14 @@ test('notification money/status/privacy boundaries; uncertain formats never coun
   assert.equal(notification(event('OTP pembayaran 123456')),null);
   assert.equal(notification(event('Isi saldo Rp25.000 berhasil')).tx,null);
   assert.equal(notification(event('Transfer sukses Rp25.000')).tx,null);
+  assert.equal(notification(event('Rp 50.00 terkirim kepada [nama]')).tx,null);
+  assert.equal(notification(event('Rp 50.000 terkirim kepada [nama]')).tx,null,'recipient ownership is not assumed');
+  assert.equal(notification(event('OTP Rp 50.00 terkirim kepada [nama]')),null);
+  for(const phrase of ['Rp50.000 dikirim','Uang keluar Rp50.000','Pengeluaran Rp50.000','Pemasukan Rp50.000','Pendapatan Rp50.000','Penghasilan Rp50.000','Rp50.000 dikirimkan','Terima uang Rp50.000','Rp50.000 ditransfer','Saldo bertambah Rp50.000','Debit Rp50.000','Credited IDR 50000','Cash in IDR 50000','Sent IDR 50000','Withdrawal IDR 50000','Pembelian Rp50.000']){
+    const parsed=notification(event(phrase));assert.ok(parsed,phrase);assert.equal(parsed.tx,null,phrase+' needs explicit verified direction');
+  }
+  for(const phrase of ['OTP uang masuk 123456','PIN debit 123456','Kode verifikasi transfer 123456'])assert.equal(notification(event(phrase)),null,phrase);
+  for(const phrase of ['Payment completed credited IDR 50000','Pembayaran sukses pemasukan Rp50.000','Kamu menerima Rp50.000 debit','Kamu menerima Rp50.000 pengeluaran','Pembayaran berhasil ditolak Rp50.000','Payment completed declined IDR 50000','Pembayaran sukses dibatalkan Rp50.000'])assert.equal(notification(event(phrase)).tx,null,phrase);
   assert.ok(!notification(event('Pembayaran ke 081234567890 Rp25.000 berhasil')).message.includes('081234567890'));
   assert.throws(()=>notification({...event(),packageName:'other'}));
   assert.throws(()=>notification({...event(),eventId:'bad'}));
@@ -91,4 +99,14 @@ test('income append and review preserve balance, deduplication and explicit tran
   const unclear=event('Uang masuk Rp25,000 berhasil',103);await send(unclear,token);
   assert.equal((await connection.POST(req('/api/dana','POST',{...data,eventId:unclear.eventId,type:'income',amount:25000,description:'Pemasukan diperiksa'}))).status,200);
   await send(unclear,token);saved=await read();assert.equal(saved.state.transactions.length,3);assert.equal(summary(saved.state).available,75000);
+});
+test('reported terkirim notification reaches review without guessing money or duplicating a replay',async()=>{
+  globalThis.__user={userId:'reported-notification',displayName:'Reported',email:'reported@example.test'};
+  const token=await pair(),notice=event('Rp 50.00 terkirim kepada [nama]',201);
+  assert.equal((await (await send(notice,token)).json()).status,'review');await send(notice,token);
+  const list=await (await connection.GET(req('/api/dana'))).json();assert.equal(list.count,1);assert.match(list.events[0].message,/Rp 50\.00 terkirim/);
+  assert.equal((await read()).state.transactions.length,0);
+  const review={action:'review',eventId:notice.eventId,type:'expense',date:list.events[0].date,amount:50000,category:'Lainnya',description:'Nominal diperiksa dengan bukti'};
+  assert.equal((await connection.POST(req('/api/dana','POST',review))).status,200);await send(notice,token);
+  const saved=await read();assert.equal(saved.state.transactions.length,1);assert.equal(saved.state.transactions[0].amount,50000);
 });

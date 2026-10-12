@@ -16,7 +16,7 @@ public class Queue {
         JSONArray a=array(c);String id=event.getString("eventId");
         for(int i=0;i<a.length();i++)if(a.getJSONObject(i).getString("eventId").equals(id))return;
         if(a.length()>=500){prefs(c).edit().putString("status","Antrean penuh. Notifikasi baru belum tercatat; periksa DANA dan kirim ulang antrean.").commit();return;}
-        a.put(event);if(!prefs(c).edit().putString("queue",a.toString()).commit())throw new JSONException("Storage unavailable");
+        a.put(event);if(!prefs(c).edit().putString("queue",a.toString()).putString("status","Notifikasi disimpan di HP. Menunggu pengiriman.").commit())throw new JSONException("Storage unavailable");
     }
     public static synchronized JSONObject first(Context c)throws JSONException{JSONArray a=array(c);return a.length()==0?null:a.getJSONObject(0);}
     public static synchronized void remove(Context c,String id,String token,String status)throws JSONException{

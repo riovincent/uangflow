@@ -27,10 +27,11 @@ public class MainActivity extends Activity {
         button(layout,"Hubungkan perangkat",v->connect());
         button(layout,"3. Izinkan akses notifikasi",v->new AlertDialog.Builder(this).setTitle("Izin akses notifikasi").setMessage("Aktifkan UangFlow di pengaturan akses notifikasi. Android memberi akses luas, tetapi aplikasi hanya memproses notifikasi transaksi DANA. Kamu bisa mencabut izin kapan saja.").setPositiveButton("Buka pengaturan",(d,w)->startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))).setNegativeButton("Batal",null).show());
         status=text(layout,"",16,true);
+        button(layout,"Periksa notifikasi DANA",v->{DanaListener.check(this);updateStatus();});
         button(layout,"Kirim ulang antrean",v->{Queue.prefs(this).edit().putBoolean("blocked",false).apply();SyncJob.schedule(this);updateStatus();});
         button(layout,"Buka tabel UangFlow",v->startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://uangflow.org/"))));
         button(layout,"Putuskan di HP ini",v->new AlertDialog.Builder(this).setTitle("Putuskan koneksi?").setMessage("Kunci dan antrean di HP akan dihapus. Untuk membatalkan kunci server, gunakan Putuskan koneksi HP di Pengaturan UangFlow.").setPositiveButton("Putuskan",(d,w)->{Queue.clear(this);updateStatus();}).setNegativeButton("Batal",null).show());
-        text(layout,"Versi uji 0.2.0 · Periksa beberapa catatan pertama. Jika format notifikasi belum jelas, pesan masuk untuk ditinjau. Pastikan notifikasi transaksi DANA aktif. Antrean saat offline disimpan di HP dan dikirim saat koneksi tersedia; tidak menjamin penangkapan semua transaksi.",14,false);
+        text(layout,"Versi uji 0.2.1 · Periksa beberapa catatan pertama. Jika format notifikasi belum jelas, pesan masuk untuk ditinjau. Pastikan notifikasi transaksi DANA aktif. Antrean saat offline disimpan di HP dan dikirim saat koneksi tersedia; tidak menjamin penangkapan semua transaksi.",14,false);
     }
     private TextView text(LinearLayout layout,String value,int size,boolean bold){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(bold?green:Color.rgb(36,55,62));if(bold)t.setTypeface(null,1);t.setPadding(0,12,0,12);layout.addView(t);return t;}
     private void button(LinearLayout layout,String value,View.OnClickListener action){Button b=new Button(this);b.setText(value);b.setAllCaps(false);b.setMinHeight(52);layout.addView(b);b.setOnClickListener(action);}
@@ -46,6 +47,6 @@ public class MainActivity extends Activity {
     private void updateStatus(){
         String listeners=Settings.Secure.getString(getContentResolver(),"enabled_notification_listeners");
         boolean permitted=listeners!=null&&listeners.contains(new ComponentName(this,DanaListener.class).flattenToString());
-        status.setText((Queue.prefs(this).getString("token","").isEmpty()?"Belum terhubung":"Kunci tersimpan")+" · "+(permitted?"Izin notifikasi aktif":"Izin notifikasi belum aktif")+"\nAntrean: "+Queue.count(this)+"\n"+Queue.prefs(this).getString("status","Belum menerima notifikasi."));
+        status.setText((Queue.prefs(this).getString("token","").isEmpty()?"Belum terhubung":"Kunci tersimpan")+" · "+(permitted?"Izin notifikasi aktif":"Izin notifikasi belum aktif")+"\nListener: "+(DanaListener.isConnected()?"tersambung":"belum tersambung")+"\nAntrean: "+Queue.count(this)+"\n"+Queue.prefs(this).getString("status","Belum menerima notifikasi.")+"\n"+Queue.prefs(this).getString("listener_status","Tekan Periksa notifikasi DANA untuk memeriksa panel."));
     }
 }
