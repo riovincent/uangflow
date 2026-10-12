@@ -10,6 +10,12 @@ Masuk → Pengaturan → unduh APK → buat kunci perangkat → hubungkan aplika
 
 Panduan pemasangan dan privasi: `public/dana-android.html`. Sumber/build APK, batasan dan kalibrasi perangkat: `android/README.md`. Belum diuji dengan notifikasi DANA asli pada HP pengguna. Pengujian server/parser: `tests/dana.test.js`; alur browser lokal: `tests/dana-browser.mjs`.
 
+## Persiapan DANA Enterprise sandbox
+
+`public/dana-sandbox.html` berisi tiga alamat registrasi untuk Endpoint URLs Initialization. `GET /v1.0/debit/notify` dan `GET /v1.0/debit/emoney/transfer-bank/notify.htm` menunjukkan status persiapan; POST sengaja mengembalikan 503 dan kode kegagalan SNAP, tanpa membaca payload, menyimpan pesan, atau mengubah keuangan. `GET /api/dana/sandbox/return` membuang seluruh parameter callback dan mengarahkan ke halaman yang jelas menyebut akun belum terhubung. Belum ada pertukaran authCode atau binding; jangan memulai otorisasi akun melalui endpoint ini. Tidak ada private key, token, atau kredensial sandbox dalam source. Tes penolakan webhook dan pembuangan parameter: `tests/dana-sandbox.test.js`.
+
+Ini hanya tahap pendaftaran URL sandbox, bukan integrasi Transaction History yang berfungsi. Setelah kredensial tersedia, implementasikan verifikasi signature dan penyimpanan tahan retry sebelum menerima webhook; untuk riwayat perlu binding dengan state sekali pakai yang terikat ke pengguna, token server yang terlindungi, pagination, deduplikasi dan pemetaan transaksi yang disetujui. Callback tests belum dapat lulus selama endpoint belum dikonfigurasi. Sandbox tidak mengambil transaksi akun asli; akses produksi dan cakupan transfer/riwayat lintas merchant perlu dikonfirmasi ke DANA.
+
 ## Jalankan lokal
 
 Gunakan Node.js 24 dan dependensi dari package-lock.json. Jalankan `npm run install:ci`, `npm run build`, lalu terapkan migrasi SQL di `drizzle/` ke database preview sesuai panduan README starter. Jalankan `npm run dev` dan buka alamat yang ditampilkan. Sign-in pada loopback adalah simulasi pengembangan dari starter; sign-in produksi ditangani Sites melalui ChatGPT.
