@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {registerHooks} from 'node:module';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
-import {blank,load} from '../public/domain.js';
+import {blank,load,summary} from '../public/domain.js';
 import {notification} from '../public/dana.js';
 const event=(text='Pembayaran Rp25.000 berhasil di Toko',n=1)=>({packageName:'id.dana',eventId:n.toString(16).padStart(64,'0'),postedAt:Date.now(),title:'DANA',text});
 test('notification money/status/privacy boundaries; uncertain formats never count',()=>{
@@ -11,13 +11,20 @@ test('notification money/status/privacy boundaries; uncertain formats never coun
   assert.equal(notification(event('Payment successfully completed IDR 125000')).tx.amount,125000);
   for(const text of ['Pembayaran Rp25.000 gagal','Pembayaran belum berhasil Rp25.000','Pembayaran berhasil diterima Rp25.000','Pembayaran berhasil Rp25.000 saldo Rp100.000','Pembayaran sukses Rp25,000','Pembayaran berhasil Rp25.000,50','Pembayaran berhasil Rp-25000','Promo pembayaran sukses Rp25.000','Pembayaran sukses Rp1000000001','Pembayaran diproses Rp25.000','Pembayaran berhasil Rp25.000 biaya Rp500','Pembayaran refund sukses Rp25.000'])assert.equal(notification(event(text)).tx,null,text);
   assert.equal(notification(event('OTP pembayaran 123456')),null);
-  assert.equal(notification(event('Isi saldo Rp25.000 berhasil')),null);
-  assert.equal(notification(event('Transfer sukses Rp25.000')),null);
+  assert.equal(notification(event('Isi saldo Rp25.000 berhasil')).tx,null);
+  assert.equal(notification(event('Transfer sukses Rp25.000')).tx,null);
   assert.ok(!notification(event('Pembayaran ke 081234567890 Rp25.000 berhasil')).message.includes('081234567890'));
   assert.throws(()=>notification({...event(),packageName:'other'}));
   assert.throws(()=>notification({...event(),eventId:'bad'}));
   assert.throws(()=>notification({...event(),postedAt:Date.now()-8*86400000}));
   assert.throws(()=>notification({...event(),postedAt:Date.now()+600000}));
+});
+test('incoming money needs clear direction; mixed, self-transfer and incomplete messages require review',()=>{
+  for(const text of ['Kamu menerima Rp50.000 dari teman','Anda telah menerima Rp50.000','You have received IDR 50000','Uang masuk Rp50.000 berhasil']){
+    const tx=notification(event(text)).tx;assert.equal(tx.type,'income',text);assert.equal(tx.amount,50000);assert.equal(tx.description,'Pemasukan DANA');
+  }
+  for(const text of ['Uang masuk Rp50.000','Kamu menerima Rp50.000 gagal','Kamu belum menerima Rp50.000','Kamu akan menerima Rp50.000','You have not received IDR 50000','Kamu menerima Rp50.000 cashback','Transfer masuk Rp50.000 berhasil','Isi saldo Rp50.000 berhasil','Kamu menerima refund Rp50.000','Kamu menerima Rp50.000 dan mengirim Rp10.000','Pembayaran sukses. Kamu menerima Rp50.000','Kamu menerima Rp50.000 saldo Rp100.000','Kamu menerima Rp50,000','Kamu mengirim Rp5.000 berhasil','Received Rp50.000','Promo uang masuk Rp50.000 berhasil'])assert.equal(notification(event(text)).tx,null,text);
+  assert.equal(notification(event('Kamu menerima OTP 123456 Rp50.000')),null);
 });
 const sqlite=new DatabaseSync(':memory:');
 for(const file of readdirSync('drizzle').filter(n=>n.endsWith('.sql')).sort())sqlite.exec(readFileSync('drizzle/'+file,'utf8'));
@@ -54,11 +61,11 @@ test('device pairing, safe append, idempotency, review, isolation, revocation an
   const list=await (await connection.GET(req('/api/dana'))).json();assert.equal(list.count,1);assert.equal(list.events[0].event_id,uncertain.eventId);assert.ok(!JSON.stringify(list).includes('token_hash'));
   globalThis.__user={userId:'bob',displayName:'Bob',email:'b@example.test'};
   const other=await pair();assert.equal((await (await connection.GET(req('/api/dana'))).json()).count,0);
-  assert.equal((await connection.POST(req('/api/dana','POST',{action:'review',eventId:uncertain.eventId,date:list.events[0].date,amount:25000,description:'Forged',category:'Lainnya'}))).status,409);
+  assert.equal((await connection.POST(req('/api/dana','POST',{action:'review',type:'expense',eventId:uncertain.eventId,date:list.events[0].date,amount:25000,description:'Forged',category:'Lainnya'}))).status,409);
   assert.equal((await read()).state.transactions.length,0);
   globalThis.__user={userId:'alice',displayName:'Alice',email:'a@example.test'};
-  assert.equal((await connection.POST(req('/api/dana','POST',{action:'review',eventId:uncertain.eventId,date:list.events[0].date,amount:-1,description:'Lunch',category:'Makanan'}))).status,400);
-  assert.equal((await connection.POST(req('/api/dana','POST',{action:'review',eventId:uncertain.eventId,date:list.events[0].date,amount:25000,description:'Lunch',category:'Makanan'}))).status,200);
+  assert.equal((await connection.POST(req('/api/dana','POST',{action:'review',type:'expense',eventId:uncertain.eventId,date:list.events[0].date,amount:-1,description:'Lunch',category:'Makanan'}))).status,400);
+  assert.equal((await connection.POST(req('/api/dana','POST',{action:'review',type:'expense',eventId:uncertain.eventId,date:list.events[0].date,amount:25000,description:'Lunch',category:'Makanan'}))).status,200);
   assert.equal((await read()).state.transactions.length,2);await send(uncertain,token);assert.equal((await read()).state.transactions.length,2);
   const failed=event('Pembayaran gagal Rp25.000',3);await send(failed,token);await connection.POST(req('/api/dana','POST',{action:'ignore',eventId:failed.eventId}));await send(failed,token);assert.equal((await read()).state.transactions.length,2);assert.equal(sqlite.prepare('SELECT message FROM dana_events WHERE user_id=? AND event_id=?').get('alice',failed.eventId).message,'');
   const replacement=await pair();assert.equal((await send(event('Pembayaran berhasil Rp10000',4),token)).status,401);
@@ -68,4 +75,20 @@ test('device pairing, safe append, idempotency, review, isolation, revocation an
   assert.equal((await state.PUT(req('/api/state','PUT',{state:blank(),revision:0,resetIntegrations:true}))).status,409);assert.equal((await ingest.GET(req('/api/dana/notifications','GET',undefined,replacement))).status,200,'stale reset cannot revoke connection');
   saved=await read();assert.equal((await state.PUT(req('/api/state','PUT',{state:blank(),revision:saved.revision,resetIntegrations:true}))).status,200);assert.equal((await send(event(),replacement)).status,401);assert.equal(sqlite.prepare('SELECT COUNT(*) n FROM dana_events WHERE user_id=?').get('alice').n,0);
   assert.equal((await ingest.GET(req('/api/dana/notifications','GET',undefined,other))).status,200,'reset leaves other accounts alone');
+});
+test('income append and review preserve balance, deduplication and explicit transfer classification',async()=>{
+  globalThis.__user={userId:'income-user',displayName:'Income',email:'income@example.test'};
+  const token=await pair(),first=event('Kamu menerima Rp50.000 dari teman',101);
+  assert.equal((await (await send(first,token)).json()).status,'recorded');
+  await send(first,token);
+  let saved=await read();assert.equal(saved.state.transactions.length,1);assert.equal(saved.state.transactions[0].type,'income');assert.equal(summary(saved.state).available,50000);
+  const transfer=event('Transfer masuk Rp50.000 berhasil',102);assert.equal((await (await send(transfer,token)).json()).status,'review');
+  const data={action:'review',eventId:transfer.eventId,date:saved.state.transactions[0].date,amount:50000,description:'Dari rekening sendiri',category:'Lainnya'};
+  for(const type of [undefined,'bogus','refund'])assert.equal((await connection.POST(req('/api/dana','POST',{...data,type}))).status,400);
+  assert.equal((await read()).state.transactions.length,1);
+  assert.equal((await connection.POST(req('/api/dana','POST',{...data,type:'transfer'}))).status,200);
+  saved=await read();assert.equal(summary(saved.state).available,50000);assert.equal(saved.state.transactions[1].type,'transfer');
+  const unclear=event('Uang masuk Rp25,000 berhasil',103);await send(unclear,token);
+  assert.equal((await connection.POST(req('/api/dana','POST',{...data,eventId:unclear.eventId,type:'income',amount:25000,description:'Pemasukan diperiksa'}))).status,200);
+  await send(unclear,token);saved=await read();assert.equal(saved.state.transactions.length,3);assert.equal(summary(saved.state).available,75000);
 });

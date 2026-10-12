@@ -29,7 +29,8 @@ export async function POST(request:Request){
       await env.DB!.prepare("UPDATE dana_events SET status='ignored',message='' WHERE user_id=? AND event_id=? AND status='review'").bind(u.userId,data.eventId).run();return json({ok:true});
     }
     if(data.action==='review'){
-      let tx;try{tx=transaction({date:data.date,amount:data.amount,type:'expense',status:'completed',category:data.category,description:data.description,reference:data.eventId,source:'dana'});}catch{return json({error:'Periksa nominal, tanggal, kategori, dan deskripsi.'},400);}
+      if(!['expense','income','transfer'].includes(data.type))return json({error:'Pilih jenis pengeluaran, pemasukan, atau transfer.'},400);
+      let tx;try{tx=transaction({date:data.date,amount:data.amount,type:data.type,status:'completed',category:data.category,description:data.description,reference:data.eventId,source:'dana'});}catch{return json({error:'Periksa nominal, tanggal, kategori, dan deskripsi.'},400);}
       if(!await record(u.userId,data.eventId,tx))return json({error:'Notifikasi sudah ditinjau atau tabel penuh. Muat ulang.'},409);
       return json({ok:true});
     }

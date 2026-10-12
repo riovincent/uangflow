@@ -2,11 +2,11 @@
 
 Aplikasi full-stack berbahasa Indonesia: pencatatan pengeluaran, impor CSV yang dapat dikoreksi, anggaran, tagihan, tabungan, dan pendamping anggaran berbasis perhitungan.
 
-Login berhasil membuka dashboard dan semua menu, termasuk untuk akun baru yang belum mengatur dana awal. Pengaturan dana awal ditawarkan lewat banner tanpa mengunci navigasi. Pendaftaran membuka pilihan login; jika konfirmasi email aktif, pengguna harus mengonfirmasi email sebelum masuk. Pencatatan notifikasi pembayaran DANA di Android tersedia sebagai versi uji melalui aplikasi pendamping; integrasi resmi QRIS/bank dan layanan AI belum tersedia.
+Login berhasil membuka dashboard dan semua menu, termasuk untuk akun baru yang belum mengatur dana awal. Pengaturan dana awal ditawarkan lewat banner tanpa mengunci navigasi. Pendaftaran membuka pilihan login; jika konfirmasi email aktif, pengguna harus mengonfirmasi email sebelum masuk. Pencatatan notifikasi pemasukan dan pembayaran DANA di Android tersedia sebagai versi uji melalui aplikasi pendamping; integrasi resmi QRIS/bank dan layanan AI belum tersedia.
 
 ## DANA Android
 
-Masuk → Pengaturan → unduh APK → buat kunci perangkat → hubungkan aplikasi pendamping → izinkan akses notifikasi. Pembayaran yang jelas berhasil dan memiliki satu nominal IDR dicatat sebagai pengeluaran; pesan ambigu perlu ditinjau pada menu Transaksi. Kunci hanya bisa mengirim notifikasi, dapat dicabut, dan dipisahkan berdasarkan akun. Antrean offline dan idempotensi mencegah pengiriman ulang menambah catatan ganda. Pembaruan memakai revisi untuk melindungi perubahan di website.
+Masuk → Pengaturan → unduh APK → buat kunci perangkat → hubungkan aplikasi pendamping → izinkan akses notifikasi. APK 0.2.0 menangkap pemasukan dan pengeluaran. Pembayaran yang jelas berhasil dan memiliki satu nominal IDR dicatat sebagai pengeluaran; penerimaan uang yang jelas dengan satu nominal dicatat sebagai pemasukan. Transfer, top up, refund, dan pesan ambigu perlu ditinjau pada menu Transaksi dengan jenis dipilih secara eksplisit. Transfer uang milik sendiri tidak boleh dihitung sebagai pemasukan baru. Pembaruan APK perlu dipasang di atas aplikasi lama. Kunci hanya bisa mengirim notifikasi, dapat dicabut, dan dipisahkan berdasarkan akun. Antrean offline dan idempotensi mencegah pengiriman ulang menambah catatan ganda. Pembaruan memakai revisi untuk melindungi perubahan di website.
 
 Panduan pemasangan dan privasi: `public/dana-android.html`. Sumber/build APK, batasan dan kalibrasi perangkat: `android/README.md`. Belum diuji dengan notifikasi DANA asli pada HP pengguna. Pengujian server/parser: `tests/dana.test.js`; alur browser lokal: `tests/dana-browser.mjs`.
 
