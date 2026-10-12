@@ -1,0 +1,27 @@
+const {chromium}=await import(process.env.UANGFLOW_PLAYWRIGHT_PATH || '@playwright/test');
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFileSync,mkdirSync} from 'node:fs';
+const browser=await chromium.launch({channel:'msedge',headless:true}),context=await browser.newContext({viewport:{width:1280,height:950}}),page=await context.newPage();
+const base='http://127.0.0.1:3270',errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+const button=name=>page.getByRole('button',{name,exact:true}).first();
+const nav=async name=>{await button(name).click();};
+try{
+  await page.goto(base+'/signin-with-chatgpt?return_to=%2F');await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();
+  await nav('Pengaturan');await button('Hapus semua data keuangan').click();await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();await nav('Pengaturan');
+  await button('Buat kunci perangkat').click();await page.locator('#dana-token').waitFor();const token=await page.locator('#dana-token').inputValue();assert.match(token,/^uf_dana_[a-f0-9]{64}$/);await button('Selesai').click();
+  const make=(text,n)=>({packageName:'id.dana',eventId:n.toString(16).padStart(64,'0'),postedAt:Date.now(),title:'Pembayaran DANA',text});
+  const send=async data=>{const r=await page.request.post(base+'/api/dana/notifications',{headers:{Authorization:'Bearer '+token},data});assert.equal(r.status(),200);return r.json();};
+  const first=make('Pembayaran berhasil Rp25.000 di Toko',501);assert.equal((await send(first)).status,'recorded');await send(first);
+  await button('Perbarui catatan').click();await nav('Transaksi');await page.getByText('Pembayaran DANA',{exact:true}).waitFor();assert.equal(await page.locator('tbody tr').count(),1);
+  const uncertain=make('Pembayaran berhasil Rp25,000 <img src=x onerror=alert(1)>',502);assert.equal((await send(uncertain)).status,'review');await nav('Pengaturan');await button('Perbarui catatan').click();await nav('Transaksi');await page.getByRole('heading',{name:'1 notifikasi DANA perlu diperiksa'}).waitFor();assert.equal(await page.locator('img[src=x]').count(),0);assert.equal(await page.locator('tbody tr').count(),1);
+  await button('Periksa').click();assert.equal(await page.locator('#dana-review-form [name=amount]').inputValue(),'','uncertain money is not guessed');await page.locator('#dana-review-form [name=amount]').fill('25000');await page.locator('#dana-review-form [name=description]').fill('Makan siang dari DANA');await page.locator('#dana-review-form [name=category]').selectOption('Makanan');await button('Catat pengeluaran').click();await page.locator('#modal').waitFor({state:'hidden'});await page.getByText('Makan siang dari DANA',{exact:true}).waitFor();assert.equal(await page.locator('tbody tr').count(),2);
+  await send(uncertain);await nav('Pengaturan');await button('Perbarui catatan').click();await nav('Transaksi');assert.equal(await page.locator('tbody tr').count(),2);
+  const failed=make('Pembayaran gagal Rp25.000',503);await send(failed);await nav('Pengaturan');await button('Perbarui catatan').click();await nav('Transaksi');await button('Abaikan').click();await page.getByRole('heading',{name:'1 notifikasi DANA perlu diperiksa'}).waitFor({state:'hidden'});
+  mkdirSync('outputs',{recursive:true});await page.screenshot({path:'outputs/uangflow-dana-transactions.png',fullPage:true});
+  await nav('Pengaturan');await page.setViewportSize({width:375,height:844});await page.waitForTimeout(300);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('.dana-panel').screenshot({path:'outputs/uangflow-dana-setup-mobile.png',style:'.topbar,.sidebar,.skip-link,#toast{visibility:hidden}'});
+  await button('Putuskan koneksi HP').click();await button('Buat kunci perangkat').waitFor();assert.equal((await page.request.post(base+'/api/dana/notifications',{headers:{Authorization:'Bearer '+token},data:first})).status(),401);
+  const apk=await page.request.get(base+'/downloads/uangflow-dana.apk');assert.equal(apk.status(),200);const bytes=await apk.body();assert.equal(bytes.subarray(0,2).toString(),'PK');assert.equal(createHash('sha256').update(bytes).digest('hex'),createHash('sha256').update(readFileSync('public/downloads/uangflow-dana.apk')).digest('hex'));
+  const guide=await page.request.get(base+'/dana-android.html');assert.equal(guide.status(),200);assert.equal(errors.length,0,errors.join('\n'));
+  console.log('DANA browser flow passed: pairing, append, dedup, review, ignore, revoke, mobile and APK download');
+}finally{await context.close();await browser.close();}

@@ -19,7 +19,7 @@ export async function PUT(request:Request) {
   const origin=request.headers.get('origin');
   if(!origin||origin!==new URL(request.url).origin)return json({error:'Asal permintaan tidak sesuai.'},403);
   if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Format permintaan tidak sesuai.'},415);
-  let body:{revision:number;state:ReturnType<typeof blank>};
+    let body:{revision:number;state:ReturnType<typeof blank>;resetIntegrations?:boolean};
   try {
     const reader=request.body?.getReader();if(!reader)return json({error:'Data kosong.'},400);
     const chunks=[];let size=0;
@@ -27,6 +27,7 @@ export async function PUT(request:Request) {
     const data=new Uint8Array(size);let offset=0;for(const chunk of chunks){data.set(chunk,offset);offset+=chunk.length;}
     body=JSON.parse(new TextDecoder().decode(data));
     if(!Number.isSafeInteger(body.revision)||body.revision<0)return json({error:'Versi data tidak valid.'},400);
+      if(body.resetIntegrations!==undefined&&typeof body.resetIntegrations!=='boolean')return json({error:'Pilihan reset tidak valid.'},400);
     body.state=load({getItem:()=>JSON.stringify(body.state)});
   }catch{return json({error:'Data tidak valid. Periksa nominal, tanggal, dan hubungan transaksi.'},400);}
   try {
@@ -35,6 +36,7 @@ export async function PUT(request:Request) {
     const result=await env.DB.batch([
       env.DB.prepare('INSERT OR IGNORE INTO records (user_id,state,revision,updated_at) VALUES (?,?,0,?)').bind(user.userId,JSON.stringify(blank()),now),
       env.DB.prepare('UPDATE records SET state=?,revision=revision+1,updated_at=? WHERE user_id=? AND revision=?').bind(JSON.stringify(body.state),now,user.userId,body.revision),
+        ...(body.resetIntegrations?['dana_devices','dana_events'].map(table=>env.DB!.prepare(`DELETE FROM ${table} WHERE user_id=? AND EXISTS(SELECT 1 FROM records WHERE user_id=? AND revision=? AND updated_at=? AND state=?)`).bind(user.userId,user.userId,body.revision+1,now,JSON.stringify(body.state))):[]),
     ]);
     if(result[1].meta.changes!==1)return json({error:'Data berubah di perangkat lain. Unduh salinan perubahan Anda lalu muat ulang sebelum mencoba lagi.'},409);
     return json({revision:body.revision+1});

@@ -89,7 +89,7 @@ export function load(storage) {
   for(const c of CATEGORIES)s.budgets[c]=amount(s.budgets?.[c]);
   const ids=new Set();
   s.transactions=s.transactions.map(t=>transaction(t));
-  for(const t of s.transactions){if(typeof t.id!=='string'||t.id.length>100||ids.has(t.id)||!['manual','csv','demo'].includes(t.source))throw Error('ID atau sumber transaksi tidak valid.');ids.add(t.id);}
+  for(const t of s.transactions){if(typeof t.id!=='string'||t.id.length>100||ids.has(t.id)||!['manual','csv','demo','dana'].includes(t.source))throw Error('ID atau sumber transaksi tidak valid.');ids.add(t.id);}
   const listIds=new Set();
   for(const b of s.bills){b.amount=amount(b.amount);if(typeof b.id!=='string'||b.id.length>100||listIds.has(b.id)||typeof b.name!=='string'||!b.name.trim()||b.name.length>100||!validDate(b.due))throw Error('Tagihan tidak valid.');listIds.add(b.id);}
   for(const g of s.goals){g.target=amount(g.target);g.existing=amount(g.existing);g.reserve=amount(g.reserve);if(typeof g.id!=='string'||g.id.length>100||listIds.has(g.id)||typeof g.name!=='string'||!g.name.trim()||g.name.length>100||!g.target||g.existing>g.target||!validDate(g.date))throw Error('Target tidak valid.');listIds.add(g.id);}
