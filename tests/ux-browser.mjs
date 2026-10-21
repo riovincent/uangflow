@@ -12,6 +12,11 @@ try{
  await page.locator('.opening').waitFor({state:'hidden',timeout:12000});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight),900,'Home occupies one viewport');
  await page.screenshot({path:`${out}/home-desktop.png`});
+ assert.equal(new URL(page.url()).hash,'','Home URL has no fragment');
+ await page.getByRole('button',{name:'Cara kerja',exact:true}).click();await page.waitForFunction(()=>location.hash==='#panduan');
+ await page.getByRole('link',{name:'UangFlow, beranda',exact:true}).filter({visible:true}).click();await page.waitForFunction(()=>location.hash==='');
+ await page.goBack();await page.waitForFunction(()=>location.hash==='#panduan');
+ await page.goForward();await page.waitForFunction(()=>location.hash==='');
  await page.getByRole('button',{name:'Jelajahi demo',exact:true}).click();
  assert.ok(await page.locator('.click-wave').count()>0,'Click creates a circular wave');
  await page.locator('.motion-word').first().waitFor();
@@ -37,12 +42,15 @@ try{
  const transforms=await page.locator('h1 .motion-word').evaluateAll(nodes=>nodes.flatMap(node=>node.getAnimations().flatMap(animation=>animation.effect.getKeyframes())).filter(frame=>frame.transform&&frame.transform!=='none'));
  assert.deepEqual(transforms,[],'Reduced motion never animates words with transforms');
  await page.getByRole('button',{name:'Keluar demo',exact:true}).click();await page.locator('.hero').waitFor();
+ assert.equal(new URL(page.url()).hash,'','Leaving demo returns to the clean home URL');
  for(const [width,height] of [[390,844],[470,604],[768,1024],[844,390]]){
   await page.setViewportSize({width,height});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Home fits ${width}px`);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight),height,`Home fits ${height}px height`);
   await page.screenshot({path:`${out}/home-${width}x${height}.png`});
  }
+ await page.goto(base+'/#beranda');await page.waitForFunction(()=>location.hash==='');
+ assert.equal(await page.locator('.hero').count(),1,'Legacy home fragment resolves to the homepage');
  assert.deepEqual(errors,[]);
  console.log('PASS: full opening, no skip button, circular click wave, replay on active option, all seven screens at 1440/768/390, reduced motion, and one-screen home including landscape.');
 }finally{await browser.close();}

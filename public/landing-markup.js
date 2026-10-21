@@ -1,6 +1,6 @@
 export const landingMarkup=()=>`
 <div class="landing">    <header class="header">
-      <a class="brand" href="#beranda" data-page="beranda" aria-label="UangFlow, beranda"><span class="brand-icon" aria-hidden="true"><img src="/glass/assets/uangflow-symbol.png" width="1254" height="1254" alt=""></span><span class="brand-wordmark"><img src="/glass/assets/uangflow-horizontal.png" width="442" height="196" alt="UangFlow"></span></a>
+      <a class="brand" href="/" data-page="beranda" aria-label="UangFlow, beranda"><span class="brand-icon" aria-hidden="true"><img src="/glass/assets/uangflow-symbol.png" width="1254" height="1254" alt=""></span><span class="brand-wordmark"><img src="/glass/assets/uangflow-horizontal.png" width="442" height="196" alt="UangFlow"></span></a>
       <nav class="glass nav" aria-label="Navigasi utama"><button type="button" data-action="open-dashboard">Dashboard</button><button type="button" data-page="panduan">Cara kerja</button><button type="button" data-page="bantuan">Bantuan</button></nav>
     </header><main><section class="hero" id="main" tabindex="-1"  aria-labelledby="hero-title">
     <div class="scene" aria-hidden="true"><canvas id="ocean"></canvas><div class="scene-fallback"></div></div>
