@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {waterContact} from '../public/glass/water-contact.mjs';
+const bounds={left:20,top:10,width:1000,height:800};
+assert.deepEqual(waterContact(520,610,bounds,2),{x:.5,y:.25,time:2});
+assert.equal(waterContact(-1,0,bounds,3).x,0);
+assert.equal(waterContact(2000,2000,bounds,3).x,1);
+assert.ok(Math.abs(waterContact(520,0,bounds,3).y-.405)<1e-10);
+assert.ok(Math.abs(waterContact(200,0,{left:0,top:0,width:390,height:930},3).y-.325)<1e-10);
+assert.equal(waterContact(0,0,{...bounds,width:0},0),null);
+console.log('Water contact checks passed: pointer mapping, water projection, edge bounds, and zero-size guard.');

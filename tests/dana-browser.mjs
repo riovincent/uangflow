@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFileSync,mkdirSync} from 'node:fs';
 const browser=await chromium.launch({channel:'msedge',headless:true}),context=await browser.newContext({viewport:{width:1280,height:950}}),page=await context.newPage();
-const base='http://127.0.0.1:3270',errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+const base=process.env.UANGFLOW_BASE_URL||'http://127.0.0.1:5193',errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
 const button=name=>page.getByRole('button',{name,exact:true}).first();
-const nav=async name=>{await button(name).click();};
+const nav=async name=>{if(name==='Pengaturan')await page.getByRole('button',{name:/^Menu akun/}).filter({visible:true}).click();await button(name).click();await page.waitForFunction(n=>document.querySelector('.topbar strong')?.textContent===n,name);};
 try{
-  await page.goto(base+'/signin-with-chatgpt?return_to=%2F');await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();
+  await page.goto(base+'/signin-with-chatgpt?return_to=%2F%23dashboard');await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();
   await nav('Pengaturan');await button('Hapus semua data keuangan').click();await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();await nav('Pengaturan');
   await button('Buat kunci perangkat').click();await page.locator('#dana-token').waitFor();const token=await page.locator('#dana-token').inputValue();assert.match(token,/^uf_dana_[a-f0-9]{64}$/);await button('Selesai').click();
   const make=(text,n)=>({packageName:'id.dana',eventId:n.toString(16).padStart(64,'0'),postedAt:Date.now(),title:'DANA',text});

@@ -10,7 +10,7 @@ export async function GET(request:Request) {
   try {
     if(!env.DB)return json({error:'Penyimpanan belum tersedia.'},503);
     const row=await env.DB.prepare('SELECT state,revision FROM records WHERE user_id=?').bind(user.userId).first<{state:string;revision:number}>();
-    return json({user:{id:user.userId,name:user.displayName,email:user.email,provider:user.provider},state:row?load({getItem:()=>row.state}):blank(),revision:row?.revision??0});
+    return json({user:{id:user.userId,name:user.displayName,email:user.email,provider:user.provider,authProvider:user.authProvider,avatarUrl:user.avatarUrl},state:row?load({getItem:()=>row.state}):blank(),revision:row?.revision??0});
   }catch {return json({error:'Data tidak dapat dimuat. Silakan coba lagi; data Anda tidak dihapus.'},503);}
 }
 export async function PUT(request:Request) {

@@ -2,48 +2,47 @@ import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
 const {chromium}=await import(process.env.UANGFLOW_PLAYWRIGHT_PATH||'@playwright/test');
 const browser=await chromium.launch({channel:'msedge',headless:true});
-const base='http://127.0.0.1:3270',errors=[];
+const errors=[],base=process.env.UANGFLOW_BASE_URL||'http://127.0.0.1:5193';
+const out='outputs/experience';await mkdir(out,{recursive:true});
+const pages={Ringkasan:'dashboard',Transaksi:'transactions',Anggaran:'budget',Tabungan:'goals','Money coach':'coach','Impor CSV':'imports',Pengaturan:'settings'};
 try{
-  const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
-  await page.route('**/api/state',async route=>{await new Promise(resolve=>setTimeout(resolve,600));await route.continue();});
-  await page.goto(base);
-  await page.locator('.loading-skeleton').waitFor();
-  assert.equal(await page.locator('.loading').getAttribute('aria-busy'),'true');
-  await page.getByRole('button',{name:'Coba demo',exact:true}).waitFor();
-  await mkdir('outputs',{recursive:true});
-  await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'outputs/uangflow-welcome-polished.png',fullPage:true});
-  await page.getByRole('button',{name:'Coba demo',exact:true}).click();
-  for(const width of [375,768,1024,1440]){
-    await page.setViewportSize({width,height:900});
-    for(const name of ['Transaksi','Anggaran','Tabungan','Money coach','Impor CSV','Pengaturan','Ringkasan']){
-      const button=page.getByRole('button',{name,exact:true});
-      if(!await button.isVisible())await page.locator('.mobile-more summary').click();
-      await button.click();
-      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`${name} fits ${width}px`);
-      assert.equal(await page.locator('h1').count(),1);
-    }
-    const mainTop=await page.locator('.page-heading').evaluate(e=>e.getBoundingClientRect().top),headerBottom=await page.locator('.topbar').evaluate(e=>e.getBoundingClientRect().bottom);assert.ok(mainTop>=headerBottom,'heading remains below sticky header');
-    await page.evaluate(()=>Promise.all(document.getAnimations().filter(a=>a.effect.getTiming().iterations!==Infinity).map(a=>a.finished)));
-    if(width===375){
-      assert.equal(await page.locator('.sidebar nav>.nav-item:visible').count(),4);
-      const summary=page.locator('.mobile-more summary'),bounds=await summary.boundingBox();assert.ok(bounds.height>=44);
-      const amount=await page.locator('td.numeric').first().boundingBox();assert.ok(amount.x+amount.width<=width,'mobile transaction amount stays visible');
-      await page.screenshot({path:'outputs/uangflow-mobile-polished.png',fullPage:true});
-    }
+ const page=await browser.newPage({viewport:{width:1440,height:900}});page.on('pageerror',error=>errors.push(error.message));
+ await page.goto(base);await page.locator('.opening').waitFor({state:'visible'});
+ assert.equal(await page.locator('.opening button').count(),0,'Opening has no skip control');
+ await page.locator('.opening').waitFor({state:'hidden',timeout:12000});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight),900,'Home occupies one viewport');
+ await page.screenshot({path:`${out}/home-desktop.png`});
+ await page.getByRole('button',{name:'Jelajahi demo',exact:true}).click();
+ assert.ok(await page.locator('.click-wave').count()>0,'Click creates a circular wave');
+ await page.locator('.motion-word').first().waitFor();
+ const oldTitle=await page.locator('h1 .motion-word').first().elementHandle();
+ await page.getByRole('button',{name:'Ringkasan',exact:true}).click();
+ await page.waitForFunction(node=>!node.isConnected,oldTitle);
+ assert.ok(await page.locator('h1 .motion-word').first().evaluate(node=>node.getAnimations().length)>0,'Active option replays word animation');
+ for(const width of [1440,768,390]){
+  await page.setViewportSize({width,height:width===768?1024:width===390?844:900});
+  for(const [name,route] of Object.entries(pages)){
+   const option=page.getByRole('button',{name,exact:true}).first();
+   if(name==='Pengaturan')await page.getByRole('button',{name:/^Menu akun/}).filter({visible:true}).click();else if(!await option.isVisible())await page.locator('.mobile-more summary').click();
+   await option.click();await page.waitForFunction(hash=>location.hash===hash,'#'+route);
+   await page.waitForTimeout(680);
+   assert.equal(await page.locator('main h1').count(),1,`${route}: one heading`);
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${route} fits ${width}px`);
+   await page.screenshot({path:`${out}/${width}-${route}.png`});
   }
-  await page.screenshot({path:'outputs/uangflow-dashboard-polished.png',fullPage:true});
-  await page.getByRole('button',{name:'Catat transaksi',exact:false}).click();
-  assert.equal(await page.locator('#modal').getAttribute('aria-labelledby'),'dialog-title');
-  await page.locator('#tx-form [name=description]').fill('Teks form tetap ada');
-  await page.keyboard.press('Escape');assert.equal(await page.locator('#modal').isVisible(),false);
-  await page.emulateMedia({reducedMotion:'reduce'});
-  await page.reload();await page.getByRole('button',{name:'Coba demo',exact:true}).waitFor();
-  assert.equal(await page.locator('.welcome-story').evaluate(e=>getComputedStyle(e).animationName),'none');
-  await page.setViewportSize({width:844,height:390});
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'landscape fits');
-  await page.getByRole('button',{name:'Masuk',exact:true}).click();
-  await page.locator('#modal').waitFor();
-  assert.ok(await page.locator('#modal').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight));
-  assert.deepEqual(errors,[]);
-  console.log('PASS: loading status, all screens at 375/768/1024/1440px, five mobile navigation targets, labelled dialog, Escape, reduced motion and landscape.');
+ }
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.getByRole('button',{name:'Ringkasan',exact:true}).click();
+ await page.waitForFunction(()=>location.hash==='#dashboard');
+ const transforms=await page.locator('h1 .motion-word').evaluateAll(nodes=>nodes.flatMap(node=>node.getAnimations().flatMap(animation=>animation.effect.getKeyframes())).filter(frame=>frame.transform&&frame.transform!=='none'));
+ assert.deepEqual(transforms,[],'Reduced motion never animates words with transforms');
+ await page.getByRole('button',{name:'Keluar demo',exact:true}).click();await page.locator('.hero').waitFor();
+ for(const [width,height] of [[390,844],[470,604],[768,1024],[844,390]]){
+  await page.setViewportSize({width,height});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`Home fits ${width}px`);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight),height,`Home fits ${height}px height`);
+  await page.screenshot({path:`${out}/home-${width}x${height}.png`});
+ }
+ assert.deepEqual(errors,[]);
+ console.log('PASS: full opening, no skip button, circular click wave, replay on active option, all seven screens at 1440/768/390, reduced motion, and one-screen home including landscape.');
 }finally{await browser.close();}

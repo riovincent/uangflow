@@ -18,7 +18,7 @@ Ini hanya tahap pendaftaran URL sandbox, bukan integrasi Transaction History yan
 
 ## Jalankan lokal
 
-Gunakan Node.js 24 dan dependensi dari package-lock.json. Jalankan `npm run install:ci`, `npm run build`, lalu terapkan migrasi SQL di `drizzle/` ke database preview sesuai panduan README starter. Jalankan `npm run dev` dan buka alamat yang ditampilkan. Sign-in pada loopback adalah simulasi pengembangan dari starter; sign-in produksi ditangani Sites melalui ChatGPT.
+Gunakan Node.js 24 dan dependensi dari package-lock.json. Jalankan `npm run install:ci`, `npm run build`, lalu terapkan migrasi SQL di `drizzle/` ke database preview sesuai panduan README starter. Jalankan `npm run dev` dan buka alamat yang ditampilkan. Login email dan Google memakai konfigurasi Supabase di `.dev.vars` lokal atau runtime variables Sites pada produksi. Simulasi identitas Sites pada loopback hanya dipertahankan untuk pengujian fixture lama.
 
 Pengujian: `node --test tests/*.test.js` dan `npx tsc --noEmit`.
 
@@ -26,7 +26,7 @@ Pengujian browser opsional: `node tests/browser.mjs` memakai Playwright (`@playw
 
 ## Penyimpanan dan privasi
 
-Produksi memakai database Cloudflare D1 dengan binding `DB`. Login email/password dan Google memakai Supabase Auth ketika dikonfigurasi; ChatGPT tetap tersedia melalui Sites. API memverifikasi token Supabase langsung ke layanan Auth, mengharuskan email terverifikasi, memeriksa asal permintaan tulis, memvalidasi data, dan menolak versi lama agar perubahan perangkat lain tidak tertimpa. ID pengguna Supabase diberi awalan `supabase:`. Identitas dan nama yang dikirim klien tidak menjadi bukti kepemilikan data.
+Produksi memakai database Cloudflare D1 dengan binding `DB`. Login email/password dan Google memakai Supabase Auth ketika dikonfigurasi; identitas Sites lama tetap dikenali backend tanpa tombol login ChatGPT pada antarmuka. API memverifikasi token Supabase langsung ke layanan Auth, mengharuskan email terverifikasi, memeriksa asal permintaan tulis, memvalidasi data, dan menolak versi lama agar perubahan perangkat lain tidak tertimpa. ID pengguna Supabase diberi awalan `supabase:`. Identitas dan nama yang dikirim klien tidak menjadi bukti kepemilikan data.
 
 Akun ChatGPT lama tetap mengakses data sebelumnya. Akun email/Google tidak otomatis mengambil alih catatan ChatGPT meskipun alamat email sama. Ekspor catatan dari akun lama bila ingin memindahkannya; tidak ada migrasi otomatis.
 
@@ -44,9 +44,9 @@ Rupiah bulat, maksimum Rp1 miliar per nominal, maksimum 10.000 transaksi, 100 ta
 4. Simpan runtime variables Sites: `SUPABASE_URL` (URL proyek HTTPS), `SUPABASE_PUBLISHABLE_KEY` (kunci `sb_publishable_...` yang memang boleh dipublikasikan), dan `SUPABASE_GOOGLE_ENABLED=true` hanya setelah provider Google siap. Jangan gunakan service-role/secret key. Jangan simpan Google Client Secret di browser atau repository.
 5. Deploy ulang versi yang sudah disimpan untuk menerapkan konfigurasi. Uji daftar, konfirmasi email, masuk, keluar, pemulihan password, Google, serta akses dua akun yang terpisah. Pengujian otomatis memakai respons Auth simulasi, bukan kredensial pengguna asli.
 
-Tanpa konfigurasi, form menjelaskan email/Google belum aktif dan ChatGPT masih bekerja. Password dikirim langsung dari browser ke Supabase; UangFlow tidak menyimpan password di D1. SDK menangani sesi dan PKCE. API tidak mempercayai isi JWT yang hanya dibaca di browser.
+Tanpa konfigurasi, form menjelaskan layanan login belum aktif. Password dikirim langsung dari browser ke Supabase; UangFlow tidak menyimpan password di D1. SDK menangani sesi dan PKCE. API tidak mempercayai isi JWT yang hanya dibaca di browser.
 
-Claude.ai tidak menyediakan login yang diizinkan untuk aplikasi pihak ketiga UangFlow, sehingga tidak ada tombol login Claude palsu. Lihat https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use.
+Pengaturan profil, foto privat, identitas Google, dan hapus akun UangFlow dijelaskan di `PROFILE-SETUP.md`. Menghapus akun UangFlow tidak menghapus akun Google atau Gmail.
 
 ## Domain .org
 

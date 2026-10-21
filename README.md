@@ -2,9 +2,15 @@
 
 A full-stack spending tracker and budgeting companion for Indonesian students, with transaction entry, CSV review, budgets, bills, savings goals, and calculation-based money coaching.
 
-The frontend uses Bahasa Indonesia and rupiah. The backend validates account-specific records stored in Cloudflare D1. Hosted authentication is provided by Sites through ChatGPT sign-in.
+The frontend uses Bahasa Indonesia and rupiah. The backend validates account-specific records stored in Cloudflare D1. Email/password and Google sign-in use Supabase Auth. Existing Sites identities retain their separate records; the interface no longer offers ChatGPT sign-in.
 
 Read [UANGFLOW.md](UANGFLOW.md) for setup, testing, accounting rules, privacy, and custom-domain instructions. Automatic QRIS capture and live AI are not implemented.
+
+## Current release
+
+The homepage includes the approved UangFlow logo opening, glass card, moving ocean and Three.js sailboats, with reduced-motion and WebGL fallbacks. The account menu provides profile editing, private photos, linked Google identities and deletion of the UangFlow account only. Read [GOOGLE-LOGIN-SETUP.md](GOOGLE-LOGIN-SETUP.md) and [PROFILE-SETUP.md](PROFILE-SETUP.md) for runtime configuration and verification limits.
+
+Checks: `node --test tests/*.test.js tests/*.test.mjs`, `npx tsc --noEmit`, and the browser suites in `tests/`. Browser suites that write financial fixtures must target local preview only.
 
 ## Framework and hosting reference
 

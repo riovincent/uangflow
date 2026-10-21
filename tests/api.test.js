@@ -41,14 +41,14 @@ test('Supabase tokens require remote verification, confirmed email and distinct 
   globalThis.__env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_test';
   globalThis.__user={userId:'legacy',displayName:'Old account',email:'same@example.test'};
   const originalFetch=globalThis.fetch;
-  let mode='valid',verifiedId='alice';
+  let mode='valid',verifiedId='alice',authProvider='email',avatarUrl='https://lh3.googleusercontent.com/a/test-photo';
   globalThis.fetch=async(url,options)=>{
     assert.equal(url,'https://uangflow-test.supabase.co/auth/v1/user');
     assert.equal(options.headers.authorization,'Bearer test-token');
     assert.equal(options.headers.apikey,'sb_publishable_test');
     if(mode==='invalid')return new Response('{}',{status:401});
     if(mode==='offline')throw Error('Network unavailable');
-    return Response.json({id:verifiedId,email:'same@example.test',email_confirmed_at:mode==='unconfirmed'?null:'2026-10-09',user_metadata:{full_name:'Verified user'}});
+    return Response.json({id:verifiedId,email:'same@example.test',email_confirmed_at:mode==='unconfirmed'?null:'2026-10-09',app_metadata:{provider:authProvider},user_metadata:{full_name:'Verified user',provider:'google',avatar_url:avatarUrl}});
   };
   try{
     assert.equal((await read('bad token')).status,401);
@@ -56,6 +56,10 @@ test('Supabase tokens require remote verification, confirmed email and distinct 
     mode='offline';assert.equal((await read('test-token')).status,503);
     mode='unconfirmed';assert.equal((await read('test-token')).status,401);
     mode='valid';const account=await (await read('test-token')).json();assert.equal(account.user.id,'supabase:alice');assert.equal(account.user.provider,'supabase');
+    assert.equal(account.user.authProvider,'email','editable user metadata cannot claim Google login');
+    authProvider='google';const googleAccount=await (await read('test-token')).json();assert.equal(googleAccount.user.authProvider,'google');assert.equal(googleAccount.user.name,'Verified user');assert.equal(googleAccount.user.id,account.user.id,'login label does not change record ownership');
+    assert.equal(googleAccount.user.avatarUrl,avatarUrl);
+    for(const unsafe of ['javascript:alert(1)','https://lh3.googleusercontent.com.evil.test/photo','https://evil.test/photo']){avatarUrl=unsafe;assert.equal((await (await read('test-token')).json()).user.avatarUrl,null);}
     const state=blank();state.settings.opening=123456;
     const write=request({state,revision:0,userId:'legacy'});write.headers.set('authorization','Bearer test-token');
     assert.equal((await PUT(write)).status,200);
@@ -64,6 +68,20 @@ test('Supabase tokens require remote verification, confirmed email and distinct 
     verifiedId='bob';assert.equal((await (await read('test-token')).json()).state.settings.opening,0);
     delete globalThis.__env.SUPABASE_PUBLISHABLE_KEY;assert.equal((await read('test-token')).status,503);
   }finally{globalThis.fetch=originalFetch;delete globalThis.__env.SUPABASE_URL;}
+});
+test('profile name and private avatar use bounded metadata and an owned storage path',async()=>{
+  globalThis.__env.SUPABASE_URL='https://uangflow-test.supabase.co';globalThis.__env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_test';
+  const originalFetch=globalThis.fetch;let path='profile-user/profile.webp',badSignature=false,signedCalls=0;
+  globalThis.fetch=async(url,options)=>{
+    if(url.endsWith('/auth/v1/user'))return Response.json({id:'profile-user',email:'profile@example.test',email_confirmed_at:'2026-10-21',user_metadata:{username:'Chosen username',full_name:'Google name',profile_avatar_path:path}});
+    signedCalls++;assert.equal(url,'https://uangflow-test.supabase.co/storage/v1/object/sign/avatars/profile-user/profile.webp');assert.equal(options.headers.authorization,'Bearer test-token');
+    return Response.json({signedURL:badSignature?'https://evil.test/photo':'/object/sign/avatars/profile-user/profile.webp?token=fixture'});
+  };
+  try{
+    const account=(await (await read('test-token')).json()).user;assert.equal(account.name,'Chosen username');assert.equal(account.avatarUrl,'https://uangflow-test.supabase.co/storage/v1/object/sign/avatars/profile-user/profile.webp?token=fixture');
+    path='other-user/profile.webp';assert.equal((await (await read('test-token')).json()).user.avatarUrl,null);assert.equal(signedCalls,1,'Never sign another user path');
+    path='profile-user/profile.webp';badSignature=true;assert.equal((await (await read('test-token')).json()).user.avatarUrl,null);
+  }finally{globalThis.fetch=originalFetch;delete globalThis.__env.SUPABASE_URL;delete globalThis.__env.SUPABASE_PUBLISHABLE_KEY;}
 });
 test('auth config exposes only an explicitly publishable key',async()=>{
   const {authConfig}=await import('../app/auth-config.ts');

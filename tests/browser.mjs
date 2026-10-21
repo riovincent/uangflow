@@ -6,13 +6,13 @@ const context=await browser.newContext({viewport:{width:1440,height:1000}});
 const page=await context.newPage(),errors=[];
 page.on('pageerror',e=>errors.push(e.message));
 page.on('dialog',dialog=>dialog.accept());
-const base='http://127.0.0.1:3270';
+const base=process.env.UANGFLOW_BASE_URL||'http://127.0.0.1:5193';
 const submit=async label=>{await page.getByRole('button',{name:label,exact:true}).first().click();};
-const nav=async name=>{await page.getByRole('button',{name,exact:true}).first().click();};
+const nav=async name=>{if(name==='Pengaturan')await page.getByRole('button',{name:/^Menu akun/}).filter({visible:true}).click();await page.getByRole('button',{name,exact:true}).first().click();const routes={Ringkasan:'dashboard',Transaksi:'transactions',Anggaran:'budget',Tabungan:'goals','Money coach':'coach','Impor CSV':'imports',Pengaturan:'settings'};await page.waitForFunction(hash=>location.hash===hash,'#'+routes[name]);};
 try{
-  await page.goto(base);await page.getByRole('button',{name:'Coba demo',exact:true}).waitFor();
+  await page.goto(base);await page.getByRole('button',{name:'Jelajahi demo',exact:true}).waitFor();
   let demoWrites=0;page.on('request',r=>{if(r.method()==='PUT'&&r.url().endsWith('/api/state'))demoWrites++;});
-  await submit('Coba demo');await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();
+  await submit('Jelajahi demo');await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();
   for(const name of ['Transaksi','Anggaran','Tabungan','Money coach','Impor CSV','Pengaturan','Ringkasan']){await nav(name);}
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'mobile fits viewport');
@@ -20,14 +20,14 @@ try{
   await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:'outputs/uangflow-desktop.png',fullPage:true});
   await submit('Catat transaksi');await page.locator('#tx-form [name=description]').fill('Demo only');await page.locator('#tx-form [name=amount]').fill('1000');await submit('Simpan transaksi');
   await page.locator('#modal').waitFor({state:'hidden'});assert.equal(demoWrites,0,'demo never writes to API');
-  await submit('Keluar demo');await page.goto(base+'/signin-with-chatgpt?return_to=%2F');
+  await submit('Keluar demo');await page.goto(base+'/signin-with-chatgpt?return_to=%2F%23dashboard');
   await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();
   await nav('Pengaturan');await submit('Hapus semua data keuangan');await page.getByRole('button',{name:'Atur dana awal',exact:true}).waitFor();
   await submit('Atur dana awal');
   const next=new Date(Date.now()+20*86400000).toISOString().slice(0,10);
   await page.locator('[name=opening]').fill('2000000');await page.locator('[name=nextDate]').fill(next);await submit('Mulai mencatat');
   await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();
-  const other=await context.newPage();other.on('dialog',d=>d.accept());await other.goto(base);await other.getByRole('button',{name:/Catat transaksi/}).waitFor();
+  const other=await context.newPage();other.on('dialog',d=>d.accept());await other.goto(base+'/#dashboard');await other.getByRole('button',{name:/Catat transaksi/}).waitFor();
   await submit('Catat transaksi');await page.locator('#tx-form [name=description]').fill('TEST <img src=x onerror=alert(1)>');await page.locator('#tx-form [name=amount]').fill('25000');await page.locator('#tx-form [name=category]').selectOption('Makanan');await submit('Simpan transaksi');await page.locator('#modal').waitFor({state:'hidden'});
   assert.equal(await page.locator('img[src=x]').count(),0,'description escaped');
   await other.getByRole('button',{name:/Catat transaksi/}).click();await other.locator('#tx-form [name=description]').fill('Stale update');await other.locator('#tx-form [name=amount]').fill('100');await other.getByRole('button',{name:'Simpan transaksi',exact:true}).click();await other.getByText(/Data berubah di perangkat lain/).waitFor();await other.close();
@@ -43,7 +43,7 @@ try{
   await nav('Transaksi');
   const downloaded=page.waitForEvent('download');await submit('Ekspor CSV');assert.equal((await downloaded).suggestedFilename(),'uangflow-transaksi.csv');
   const data=await page.evaluate(async()=>await (await fetch('/api/state')).json());assert.equal(data.state.transactions.length,4);assert.equal(data.state.transactions.some(t=>t.description==='Stale update'),false);
-  await page.reload();await page.getByRole('heading',{name:'Lebih tenang, lebih terencana.'}).waitFor();const persisted=await page.evaluate(async()=>await (await fetch('/api/state')).json());assert.equal(persisted.state.transactions.length,4);
+  await page.reload();await page.getByRole('heading',{name:'Setiap rupiah punya cerita.'}).waitFor();const persisted=await page.evaluate(async()=>await (await fetch('/api/state')).json());assert.equal(persisted.state.transactions.length,4);
   await nav('Pengaturan');await submit('Hapus semua data keuangan');await page.getByRole('button',{name:'Atur dana awal',exact:true}).waitFor();
   assert.deepEqual(errors,[]);console.log('PASS: desktop/mobile, all screens, demo isolation, real local login, server persistence, stale writes, transaction escaping, budgets, paid bills, savings, CSV corrections, coach, export, reload, deletion.');
-}finally{await browser.close();}
+}catch(error){await page.screenshot({path:'outputs/browser-failure.png',fullPage:true});console.log(await page.locator('#modal').evaluate(el=>({error:el.querySelector('.form-error')?.textContent,fields:[...el.querySelectorAll('input,select')].map(x=>({name:x.name,value:x.value,valid:x.validity.valid,message:x.validationMessage})),errors:window.__testErrors||[]})));throw error;}finally{await browser.close();}
