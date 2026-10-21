@@ -7,13 +7,14 @@ const out='outputs/experience';await mkdir(out,{recursive:true});
 const pages={Ringkasan:'dashboard',Transaksi:'transactions',Anggaran:'budget',Tabungan:'goals','Money coach':'coach','Impor CSV':'imports',Pengaturan:'settings'};
 try{
  const page=await browser.newPage({viewport:{width:1440,height:900}});page.on('pageerror',error=>errors.push(error.message));
+ await page.addInitScript(()=>localStorage.setItem('uangflow.language','id'));
  await page.goto(base);await page.locator('.opening').waitFor({state:'visible'});
  assert.equal(await page.locator('.opening button').count(),0,'Opening has no skip control');
  await page.locator('.opening').waitFor({state:'hidden',timeout:12000});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight),900,'Home occupies one viewport');
  await page.screenshot({path:`${out}/home-desktop.png`});
  assert.equal(new URL(page.url()).hash,'','Home URL has no fragment');
- await page.getByRole('button',{name:'Cara kerja',exact:true}).click();await page.waitForFunction(()=>location.hash==='#panduan');
+ await page.locator('.site-nav summary').filter({hasText:'Sumber daya'}).click();await page.getByRole('link',{name:'Cara kerja',exact:true}).click();await page.waitForFunction(()=>location.hash==='#panduan');
  await page.getByRole('link',{name:'UangFlow, beranda',exact:true}).filter({visible:true}).click();await page.waitForFunction(()=>location.hash==='');
  await page.goBack();await page.waitForFunction(()=>location.hash==='#panduan');
  await page.goForward();await page.waitForFunction(()=>location.hash==='');

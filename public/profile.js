@@ -1,3 +1,4 @@
+import {t} from './i18n.js';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const marker='uangflow-profile-return';
 export const profileReturn=()=>sessionStorage.getItem(marker);
@@ -10,7 +11,7 @@ export async function openProfile(options){
   const account=data.user,identities=account.identities||[],google=identities.filter(identity=>identity.provider==='google');
   let returnValue;try{returnValue=JSON.parse(sessionStorage.getItem(marker)||'null');}catch{}sessionStorage.removeItem(marker);
   show(`<h2>Profil</h2><p>Kelola identitas dan cara masuk ke UangFlow.</p>
-    <div class="profile-identity"><span class="avatar" aria-hidden="true">${escape(user.name.slice(0,1))}${user.avatarUrl?`<img src="${escape(user.avatarUrl)}" alt="" referrerpolicy="no-referrer">`:''}</span><div><strong>${escape(user.name)}</strong><p>${escape(account.email)}</p></div></div>
+    <div class="profile-identity"><span class="avatar" aria-hidden="true">${escape(user.name.slice(0,1))}${user.avatarUrl?`<img src="${escape(user.avatarUrl)}" alt="" referrerpolicy="no-referrer">`:''}</span><div><strong data-user-content>${escape(user.name)}</strong><p data-user-content>${escape(account.email)}</p></div></div>
     <div class="profile-status" role="status" aria-live="polite">${returnValue?returnValue.owner===user.id?'Profil dimuat kembali. Periksa akun dan lanjutkan tindakanmu.':'Akun yang dipilih berbeda. Tidak ada perubahan atau penghapusan otomatis.':''}</div>
     <form id="profile-name-form" class="profile-section"><label>Username<input name="username" value="${escape(account.user_metadata?.username||user.name)}" minlength="1" maxlength="80" autocomplete="nickname" required></label><button class="secondary" type="submit">Simpan username</button></form>
     <form id="profile-email-form" class="profile-section"><label>Email akun<input name="email" type="email" value="${escape(account.email)}" maxlength="254" autocomplete="email" required></label><p class="muted">Email ini untuk akun UangFlow; alamat Gmail akun Google tidak berubah. Perubahan email perlu dikonfirmasi melalui tautan Supabase. Email lama tetap berlaku sampai verifikasi selesai.</p>${account.new_email?`<p class="notice">Menunggu konfirmasi: ${escape(account.new_email)}</p>`:''}<button class="secondary" type="submit">Ubah email</button></form>
@@ -68,7 +69,7 @@ export async function openProfile(options){
     if(action==='unlink'){
       const current=await ensureOwner(),identity=current.identities?.find(identity=>identity.identity_id===button.dataset.identity);
       if(!identity||(current.identities?.length||0)<2)throw Error('Tautkan cara masuk lain sebelum melepas Google.');
-      if(!confirm('Lepas akun Google '+(identity.identity_data?.email||'ini')+'? Pastikan kamu bisa masuk dengan cara lain.'))return;
+      if(!window.confirm(t('Lepas akun Google '+(identity.identity_data?.email||'ini')+'? Pastikan kamu bisa masuk dengan cara lain.')))return;
       const result=await auth.unlinkIdentity(identity);if(result.error)throw result.error;options.user=await updated();await openProfile(options);
     }
   }));

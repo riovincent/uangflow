@@ -3,6 +3,7 @@ const {chromium}=await import(process.env.UANGFLOW_PLAYWRIGHT_PATH||'@playwright
 const browser=await chromium.launch({channel:'msedge',headless:true});
 try{
   const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
+ await page.addInitScript(()=>localStorage.setItem('uangflow.language','id'));
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto((process.env.UANGFLOW_BASE_URL||'http://127.0.0.1:5193')+'/');
   await page.getByRole('button',{name:'Jelajahi demo',exact:true}).click();

@@ -2,9 +2,10 @@ const {chromium}=await import(process.env.UANGFLOW_PLAYWRIGHT_PATH || '@playwrig
 import assert from 'node:assert/strict';
 import {blank} from '../public/domain.js';
 const base=process.env.UANGFLOW_BASE_URL||'http://127.0.0.1:5193',browser=await chromium.launch({channel:'msedge',headless:true});
+
 const errors=[];
 try{
-  const plain=await browser.newPage({viewport:{width:390,height:844}});plain.on('pageerror',e=>errors.push(e.message));
+  const plain=await browser.newPage({viewport:{width:390,height:844}});await plain.addInitScript(()=>localStorage.setItem('uangflow.language','id'));plain.on('pageerror',e=>errors.push(e.message));
   await plain.route('**/api/auth-config',route=>route.fulfill({status:200,contentType:'application/json',body:'null'}));
   await plain.goto(base);await plain.getByRole('button',{name:'Masuk / Daftar',exact:true}).click();
   await plain.getByText('Login belum dapat dimuat.',{exact:false}).waitFor();
@@ -12,7 +13,7 @@ try{
   assert.equal(await plain.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await plain.close();
 
-  const context=await browser.newContext(),page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+  const context=await browser.newContext(),page=await context.newPage();await context.addInitScript(()=>localStorage.setItem('uangflow.language','id'));page.on('pageerror',e=>errors.push(e.message));
   const supabase='https://uangflow-test.supabase.co';
   const id='11111111-1111-4111-8111-111111111111';
   const fakeUser={id,aud:'authenticated',role:'authenticated',email:'student@example.test',email_confirmed_at:new Date().toISOString(),app_metadata:{provider:'email'},user_metadata:{full_name:'Student'}};
@@ -99,7 +100,7 @@ try{
   await page.keyboard.press('Escape');assert.equal(await page.locator('#account-menu').evaluate(el=>el.matches(':popover-open')),false);
   await accountButton().click();await page.getByRole('button',{name:'Profil',exact:true}).click();
   await page.getByRole('heading',{name:'Profil',exact:true}).waitFor();assert.equal(await page.locator('.profile-identity p').textContent(),fakeUser.email);await page.getByRole('button',{name:'Tutup',exact:true}).click();
-  await accountButton().click();await page.getByRole('button',{name:'Upgrade',exact:true}).click();await page.getByText('Paket berbayar belum tersedia.',{exact:false}).waitFor();await page.getByRole('button',{name:'Mengerti',exact:true}).click();
+  await accountButton().click();await page.getByRole('button',{name:'Upgrade',exact:true}).click();await page.getByRole('heading',{name:'Pro',exact:true}).waitFor();await page.getByRole('link',{name:'UangFlow, beranda',exact:true}).click();await page.getByRole('button',{name:'Buka dashboard',exact:false}).click();await page.waitForFunction(()=>location.hash==='#dashboard');
   await accountButton().click();await page.getByRole('button',{name:'Bantuan',exact:true}).click();await page.waitForFunction(()=>location.hash==='#bantuan');
   await accountButton().click();await page.getByRole('button',{name:'Pengaturan',exact:true}).click();await page.waitForFunction(()=>location.hash==='#settings');
   for(const [width,height] of [[1440,900],[1024,600],[390,844]]){

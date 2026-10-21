@@ -7,6 +7,7 @@ const base=process.env.UANGFLOW_BASE_URL||'http://127.0.0.1:5193';
 await mkdir('outputs/experience',{recursive:true});
 try{
  const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
+ await page.addInitScript(()=>localStorage.setItem('uangflow.language','id'));
  page.on('pageerror',e=>errors.push(e.message));
  let releaseConfig,releaseState;
  const configGate=new Promise(resolve=>releaseConfig=resolve),stateGate=new Promise(resolve=>releaseState=resolve);
@@ -27,7 +28,7 @@ try{
  await page.screenshot({path:'outputs/experience/startup-complete.png'});
  assert.equal(await page.locator('.loading,.loading-skeleton').count(),0);
  await page.close();
- const slow=await browser.newPage({reducedMotion:'reduce'});
+ const slow=await browser.newPage({reducedMotion:'reduce'});await slow.addInitScript(()=>localStorage.setItem('uangflow.language','id'));
  let releaseSlow;const slowGate=new Promise(resolve=>releaseSlow=resolve);
  await slow.route('**/api/auth-config',route=>route.fulfill({json:null}));
  await slow.route('**/api/state',async route=>{await slowGate;await route.fulfill({json:{user:null,state:blank(),revision:0}});});
@@ -36,10 +37,10 @@ try{
  await slow.waitForFunction(()=>location.hash==='#dashboard');
  releaseSlow();await slow.waitForFunction(()=>document.querySelector('#app').getAttribute('aria-busy')===null);
  assert.equal(new URL(slow.url()).hash,'#dashboard','Late account request must not replace a selected demo');
- assert.ok(await slow.getByText('Mode demo',{exact:true}).isVisible());
+ assert.ok(await slow.getByText('Mode demo',{exact:true}).filter({visible:true}).isVisible());
  assert.equal(await slow.locator('.opening').count(),0,'Reduced motion skips opening');
  await slow.close();
- const failed=await browser.newPage({reducedMotion:'reduce'});
+ const failed=await browser.newPage({reducedMotion:'reduce'});await failed.addInitScript(()=>localStorage.setItem('uangflow.language','id'));
  await failed.route('**/api/auth-config',route=>route.fulfill({json:null}));
  await failed.route('**/api/state',route=>route.fulfill({status:503,json:{error:'Test koneksi'}}));
  await failed.goto(base);await failed.getByRole('heading',{name:'Catatan belum bisa dimuat.'}).waitFor();

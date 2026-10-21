@@ -1,3 +1,9 @@
+import {watchLanguage,language} from './i18n.js';
+import {siteHeader,publicRoutes,publicLayout} from './public-site.js';
+const publicRoute=publicRoutes.includes(location.hash.slice(1));
+if(publicRoute){document.querySelector('#app').innerHTML=publicLayout(location.hash.slice(1));document.body.classList.remove('on-home','boot-pending');document.body.classList.add('on-public');}
+const header=document.querySelector('.site-header');if(header)header.outerHTML=siteHeader(language());
+watchLanguage();
 import {playOpening} from './glass/opening.js';
 
 // Start the approved opening independently of account and data requests.

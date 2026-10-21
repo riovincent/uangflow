@@ -10,8 +10,10 @@ export function replayWords(container){
     title.append(span,document.createTextNode(' '));
     span.animate(reduced()?[{opacity:.5},{opacity:1}]:[{opacity:0,transform:`translateY(${motionTokens.distance}px)`},{opacity:1,transform:'translateY(0)'}],{duration:reduced()?motionTokens.duration.fast:motionTokens.duration.slow,delay:reduced()?0:index*motionTokens.stagger,easing:motionTokens.easing,fill:'backwards'});
   }
-  const copy=container.querySelector('.page-heading p, .hero-copy p');
+  const copy=container.querySelector('.page-heading p, .hero-copy p, .public-intro > p');
   copy?.animate(reduced()?[{opacity:.5},{opacity:1}]:[{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:reduced()?motionTokens.duration.fast:motionTokens.duration.normal,delay:reduced()?0:120,easing:motionTokens.easing,fill:'backwards'});
+
+  container.querySelectorAll('.price-free,.price-pro,.resource-list > a').forEach((element,index)=>element.animate(reduced()?[{opacity:.7},{opacity:1}]:[{opacity:0,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}],{duration:reduced()?motionTokens.duration.fast:motionTokens.duration.slow,delay:reduced()?0:100+index*70,easing:motionTokens.easing,fill:'backwards'}));
 }
 
 export async function transitionPage(update,{login=false}={}){

@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {blank} from '../public/domain.js';
 const {chromium}=await import(process.env.UANGFLOW_PLAYWRIGHT_PATH||'@playwright/test');
 const browser=await chromium.launch({channel:'msedge',headless:true}),context=await browser.newContext({reducedMotion:'reduce'}),page=await context.newPage();
+await context.addInitScript(()=>localStorage.setItem('uangflow.language','id'));
 const base=process.env.UANGFLOW_BASE_URL||'http://127.0.0.1:5193',remote='https://uangflow-test.supabase.co',errors=[];
 const id='33333333-3333-4333-8333-333333333333',user={id,email:'profile@example.test',email_confirmed_at:'2026-10-21',aud:'authenticated',role:'authenticated',app_metadata:{provider:'google'},user_metadata:{full_name:'Profile User'},identities:[{identity_id:'google-old',id:'google-old',user_id:id,provider:'google',identity_data:{email:'profile@example.test'}}]};
 const token=[{alg:'HS256',typ:'JWT'},{sub:id,aud:'authenticated',exp:Date.now()/1000+3600},'signature'].map((v,i)=>i===2?v:Buffer.from(JSON.stringify(v)).toString('base64url')).join('.');

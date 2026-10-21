@@ -2,7 +2,7 @@
 
 A full-stack spending tracker and budgeting companion for Indonesian students, with transaction entry, CSV review, budgets, bills, savings goals, and calculation-based money coaching.
 
-The frontend uses Bahasa Indonesia and rupiah. The backend validates account-specific records stored in Cloudflare D1. Email/password and Google sign-in use Supabase Auth. Existing Sites identities retain their separate records; the interface no longer offers ChatGPT sign-in.
+The interface defaults to English, with a persistent English/Indonesia selector. Financial records use rupiah; stored category values and user-authored content keep their original values. The backend validates account-specific records stored in Cloudflare D1. Email/password and Google sign-in use Supabase Auth. Existing Sites identities retain their separate records; the interface no longer offers ChatGPT sign-in.
 
 Read [UANGFLOW.md](UANGFLOW.md) for setup, testing, accounting rules, privacy, and custom-domain instructions. Automatic QRIS capture and live AI are not implemented.
 
@@ -11,6 +11,12 @@ Read [UANGFLOW.md](UANGFLOW.md) for setup, testing, accounting rules, privacy, a
 The homepage includes the approved UangFlow logo opening, glass card, moving ocean and Three.js sailboats, with reduced-motion and WebGL fallbacks. The account menu provides profile editing, private photos, linked Google identities and deletion of the UangFlow account only. Read [GOOGLE-LOGIN-SETUP.md](GOOGLE-LOGIN-SETUP.md) and [PROFILE-SETUP.md](PROFILE-SETUP.md) for runtime configuration and verification limits.
 
 Checks: `node --test tests/*.test.js tests/*.test.mjs`, `npx tsc --noEmit`, and the browser suites in `tests/`. Browser suites that write financial fixtures must target local preview only.
+
+## Public navigation and pricing
+
+Pricing, Docs, Community and Resources are public routes. Community/Resources use keyboard-accessible dropdowns. Email contact opens riovincent@uangflow.org; WhatsApp, Discord and the forum remain disabled until their URLs are provided. The owner-supplied Pro offer is $19.89 → $9.89 in English and Rp358.000 → Rp178.000 in Indonesian, marked Limited time. These are fixed display prices, not exchange-rate conversion. No billing period or premium entitlement was invented; payment checkout is not enabled.
+
+`public/translations.js` owns interface copy; `data-user-content` protects names, descriptions, and account data. Adding visible copy requires its translation and the bilingual browser check. CSV/category storage formats remain unchanged.
 
 ## Framework and hosting reference
 

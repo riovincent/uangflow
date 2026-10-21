@@ -32,5 +32,5 @@ export default function Client() {
       document.body.appendChild(script);
     })();
   },[]);
-  return <><a className="skip" href="#main">Lewati navigasi</a><div id="app" inert dangerouslySetInnerHTML={{__html:landingMarkup()}}/><div dangerouslySetInnerHTML={{__html:wordmarkFilter}}/><div id="toast" role="status" aria-live="polite" aria-atomic="true"/><dialog id="modal"/></>;
+  return <><a className="skip" href="#main">Skip navigation</a><div id="app" inert dangerouslySetInnerHTML={{__html:landingMarkup()}}/><div dangerouslySetInnerHTML={{__html:wordmarkFilter}}/><div id="toast" role="status" aria-live="polite" aria-atomic="true"/><dialog id="modal"/></>;
 }

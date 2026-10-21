@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {readFileSync,mkdirSync} from 'node:fs';
 const browser=await chromium.launch({channel:'msedge',headless:true}),context=await browser.newContext({viewport:{width:1280,height:950}}),page=await context.newPage();
+await context.addInitScript(()=>localStorage.setItem('uangflow.language','id'));
 const base=process.env.UANGFLOW_BASE_URL||'http://127.0.0.1:5193',errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
 const button=name=>page.getByRole('button',{name,exact:true}).first();
 const nav=async name=>{if(name==='Pengaturan')await page.getByRole('button',{name:/^Menu akun/}).filter({visible:true}).click();await button(name).click();await page.waitForFunction(n=>document.querySelector('.topbar strong')?.textContent===n,name);};
