@@ -9,12 +9,13 @@ import {playOpening} from './glass/opening.js';
 // Start the approved opening independently of account and data requests.
 export function startHome(root,opening=false){
   const hero=root.querySelector('.hero');
-  const stop=opening?playOpening(matchMedia('(prefers-reduced-motion: reduce)')):()=>{};
-  document.body.classList.remove('boot-pending');
   let disposed=false,disposeScene=()=>{};
-  import('./glass/atmosphere.js').then(({mountAtmosphere})=>{
-    if(!disposed&&hero.isConnected)disposeScene=mountAtmosphere(hero);
-  }).catch(()=>{}); // The CSS scene remains available if WebGL cannot load.
+  const scene=import('./glass/atmosphere.js').catch(()=>null);
+  // Warm the hidden scene before the reveal; its animation waits for the opening.
+  function showScene(){return scene.then(module=>{if(module&&!disposed&&hero.isConnected)disposeScene=module.mountAtmosphere(hero);}).catch(()=>{});}
+  const stop=opening?playOpening(matchMedia('(prefers-reduced-motion: reduce)'),showScene):()=>{};
+  if(!opening)showScene();
+  document.body.classList.remove('boot-pending');
   return {hero,stop,dispose(){disposed=true;stop();disposeScene();}};
 }
 export const initialHome=document.querySelector('#app .hero')?startHome(document.querySelector('#app'),true):null;

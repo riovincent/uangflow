@@ -1071,8 +1071,9 @@ color:#eef9ff}
 .opening-active{overflow:hidden}
 .opening{position:fixed;inset:0;z-index:50;isolation:isolate}
 .opening-backdrop{position:absolute;inset:0;background:#102b40}
-.opening-logo{position:absolute;overflow:hidden;transform-origin:center;mask-size:100% 100%;mask-repeat:no-repeat;will-change:transform}
-.opening-logo>img{position:absolute;width:117.1963%;max-width:none;height:auto;left:-10.2804%;top:-22.5275%}
+.opening-logo{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.opening-logo>img{display:none}
+.opening-logo>svg{display:block;width:100%;height:100%;transform-origin:center}
 .opening-shine{position:absolute;inset:0;mask-image:url(assets/uangflow-symbol.png);mask-repeat:no-repeat;mix-blend-mode:screen}
 .opening-shine i{position:absolute;top:-25%;width:38%;height:150%;transform:skewX(-22deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.85),transparent)} /* taste-skill-ignore: approved logo shine requested by the user. */
 @media(max-width:1000px) and (min-width:601px){
