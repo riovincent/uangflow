@@ -18,7 +18,7 @@ try{
    window.renderCheck={contexts:[],samples:[],busyDraws:0};
    const getContext=HTMLCanvasElement.prototype.getContext;
    HTMLCanvasElement.prototype.getContext=function(type,...args){
-    if(type.startsWith('webgl'))window.renderCheck.contexts.push(document.querySelector('.opening-logo path')?.getAttribute('stroke-dashoffset')||'1');
+    if(type.startsWith('webgl'))window.renderCheck.contexts.push(document.body.classList.contains('opening-active'));
     return getContext.call(this,type,...args);
    };
    for(const method of ['drawArrays','drawElements']){
@@ -55,7 +55,7 @@ try{
    const canvas=document.querySelector('#ocean'),gl=canvas.getContext('webgl2');
    return {...window.renderCheck,pixels:canvas.width*canvas.height,width:canvas.width,height:canvas.height,hidden:canvas.hidden,glError:gl.getError(),overflow:document.documentElement.scrollWidth>innerWidth};
   });
-  assert.ok(result.contexts.every(offset=>offset==='1'),'WebGL compilation finishes before the reveal starts');
+  assert.ok(result.contexts.every(duringOpening=>!duringOpening),'WebGL compilation waits until the opening finishes');
   assert.equal(result.busyDraws,0,'Scene rendering does not compete with the opening');
   assert.ok(result.samples.some(frame=>frame.reveal>.98),'Reveal starts at its first phase');
   assert.ok(result.samples.some(frame=>frame.reveal<.01),'Reveal completes');

@@ -28,6 +28,17 @@ try{
  await page.screenshot({path:'outputs/experience/startup-complete.png'});
  assert.equal(await page.locator('.loading,.loading-skeleton').count(),0);
  await page.close();
+ const deferred=await browser.newPage(),sceneGate=Promise.withResolvers();
+ await deferred.route('**/glass/atmosphere.js',async route=>{await sceneGate.promise;await route.continue();});
+ await deferred.goto(base,{waitUntil:'domcontentloaded'});
+ await deferred.locator('.opening').waitFor({state:'visible'});
+ await deferred.locator('.opening').waitFor({state:'hidden',timeout:15000});
+ assert.ok(await deferred.locator('.hero').isVisible(),'Slow 3D downloads do not hold the opening or page hostage');
+ assert.equal(await deferred.locator('.hero.scene-ready').count(),0);
+ sceneGate.resolve();
+ await deferred.locator('.hero.scene-ready').waitFor({timeout:15000});
+ assert.equal(await deferred.locator('.opening').count(),0,'Loading 3D cannot restart the opening');
+ await deferred.close();
  const slow=await browser.newPage({reducedMotion:'reduce'});await slow.addInitScript(()=>localStorage.setItem('uangflow.language','id'));
  let releaseSlow;const slowGate=new Promise(resolve=>releaseSlow=resolve);
  await slow.route('**/api/auth-config',route=>route.fulfill({json:null}));

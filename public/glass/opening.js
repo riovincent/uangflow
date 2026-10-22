@@ -1,7 +1,7 @@
 import {INTRO,CONTINUATION_DELAY,smooth,logoScale} from './opening-motion.mjs';
 
-export function playOpening(reduced,prepare=()=>{}){
-  if(reduced.matches){prepare();return ()=>{};}
+export function playOpening(reduced,onComplete=()=>{}){
+  if(reduced.matches){onComplete();return ()=>{};}
   const main=document.querySelector('main'),header=document.querySelector('.header'),brand=header.querySelector('.brand'),nav=header.querySelector('nav');
   const overlay=document.createElement('div');overlay.className='opening';
   overlay.innerHTML='<div class="opening-backdrop"></div><div class="opening-logo" aria-hidden="true"><img src="/glass/assets/uangflow-symbol.png" alt=""><svg viewBox="110 205 1070 910"><defs><mask id="opening-reveal" maskUnits="userSpaceOnUse" x="110" y="205" width="1070" height="910"><rect x="110" y="205" width="1070" height="910" fill="white" opacity="0"/><path d="M440 270 C230 410 225 680 410 880 C570 1060 885 1110 1040 875 C1150 710 1050 610 940 570" fill="none" stroke="white" stroke-width="480" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></mask></defs><image href="/glass/assets/uangflow-symbol.png" width="1254" height="1254" mask="url(#opening-reveal)"/></svg><div class="opening-shine"><i></i></div></div>';
@@ -21,6 +21,7 @@ export function playOpening(reduced,prepare=()=>{}){
     for(const element of [main,brand,nav]){element.style.removeProperty('opacity');element.style.removeProperty('clip-path');}
     document.body.classList.remove('opening-active');overlay.remove();
     if(restoreFocus)brand.focus({preventScroll:true});
+    onComplete();
   }
   function onReduced(){if(reduced.matches)finish();}
   reduced.addEventListener('change',onReduced);
@@ -67,6 +68,6 @@ export function playOpening(reduced,prepare=()=>{}){
     nav.style.opacity=String(smooth((t-(3.1+CONTINUATION_DELAY))/.55));
     if(t>=INTRO.pageEnd+.1)finish();else frame=requestAnimationFrame(tick);
   }
-  Promise.all([prepare(),...[...overlay.querySelectorAll('img')].map(image=>image.decode())]).then(()=>{if(!done)frame=requestAnimationFrame(tick);}).catch(finish);
+  Promise.all([...overlay.querySelectorAll('img')].map(image=>image.decode())).then(()=>{if(!done)frame=requestAnimationFrame(tick);}).catch(finish);
   return finish;
 }

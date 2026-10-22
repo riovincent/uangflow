@@ -76,12 +76,12 @@ try{
  const bounds=hero.getBoundingClientRect(),object=document.querySelector('#object-stage').getBoundingClientRect();
  uniforms.uCard.value.set((object.left-bounds.left+object.width/2)/width,1-(object.top-bounds.top+object.height/2)/height,object.width/width,object.height/height);render();}
  resize();
+ requestAnimationFrame(()=>{if(!disposed)hero.classList.add('scene-ready');});
  const observer=new ResizeObserver(resize);observer.observe(hero);cleanups.push(()=>observer.disconnect());
  function render(){if(disposed)return;
    renderer.clear();renderer.render(background,screenCamera);sea.render(renderer,time);
  }
  function tick(now){frameId=0;const dt=Math.min((now-last)/1000,.04);last=now;
- if(document.body.classList.contains('opening-active')){frameId=requestAnimationFrame(tick);return;}
  if(!paused&&!reduced.matches){time+=dt;current.x+=(pointer.x-current.x)*(1-Math.exp(-dt*4));current.y+=(pointer.y-current.y)*(1-Math.exp(-dt*4));card.style.transform=`rotateX(${-current.y*8}deg) rotateY(${current.x*14}deg) translateY(${Math.sin(time*.65)*7}px)`;uniforms.uTime.value=time;}render();if(!paused&&!reduced.matches&&visible&&!document.hidden)frameId=requestAnimationFrame(tick);}
  function resume(){if(disposed)return;cancelAnimationFrame(frameId);last=performance.now();if(!paused&&!reduced.matches&&visible&&!document.hidden)frameId=requestAnimationFrame(tick);else{card.style.transform='none';render();}}
  reduced.addEventListener('change',()=>{paused=reduced.matches;resume();},{signal:events.signal});
@@ -92,5 +92,5 @@ try{
 }catch(error){canvas.hidden=true;console.warn('Scene fallback active:',error.message);}
 
 
-return ()=>{disposed=true;events.abort();cancelAnimationFrame(frameId);for(const dispose of cleanups)dispose();if(sea)sea.dispose();if(background)background.traverse(object=>{object.geometry?.dispose();object.material?.dispose();});renderer?.dispose();renderer?.forceContextLoss();};
+return ()=>{disposed=true;hero.classList.remove('scene-ready');events.abort();cancelAnimationFrame(frameId);for(const dispose of cleanups)dispose();if(sea)sea.dispose();if(background)background.traverse(object=>{object.geometry?.dispose();object.material?.dispose();});renderer?.dispose();renderer?.forceContextLoss();};
 }

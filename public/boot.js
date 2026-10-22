@@ -11,7 +11,7 @@ export function startHome(root,opening=false){
   const hero=root.querySelector('.hero');
   let disposed=false,disposeScene=()=>{};
   const scene=import('./glass/atmosphere.js').catch(()=>null);
-  // Warm the hidden scene before the reveal; its animation waits for the opening.
+  // Neither shader compilation nor a slow 3D download may hold up the opening.
   function showScene(){return scene.then(module=>{if(module&&!disposed&&hero.isConnected)disposeScene=module.mountAtmosphere(hero);}).catch(()=>{});}
   const stop=opening?playOpening(matchMedia('(prefers-reduced-motion: reduce)'),showScene):()=>{};
   if(!opening)showScene();
