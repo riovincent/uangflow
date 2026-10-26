@@ -13,7 +13,7 @@ try{
   await page.setViewportSize({width,height:width===768?1024:900});await community.click();
   const dropdown=page.locator('.community-menu');await dropdown.waitFor({state:'visible'});
   const box=await dropdown.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width+1,`Community fits ${width}`);
-  assert.equal(await dropdown.getByRole('link',{name:/riovincent@uangflow.org/}).getAttribute('href'),'mailto:riovincent@uangflow.org');assert.equal(await dropdown.getByRole('button',{name:/WhatsApp/}).isEnabled(),false);
+  assert.equal(await dropdown.getByRole('link',{name:/riovincent@uangflow.org/}).getAttribute('href'),'mailto:riovincent@uangflow.org');assert.equal(await dropdown.getByRole('link',{name:/WhatsApp/}).getAttribute('href'),'https://wa.me/6282286819680');
   await page.screenshot({path:`${out}/community-${width}.png`});await page.keyboard.press('Escape');assert.equal(await dropdown.isVisible(),false);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`Home fits ${width}`);
  }
@@ -34,6 +34,7 @@ try{
  await page.getByRole('link',{name:'Account & privacy',exact:true}).click();assert.equal(new URL(page.url()).hash,'#docs');
  await resources.click();await page.getByRole('link',{name:'Resource library',exact:true}).click();await page.getByRole('heading',{name:'A clear place to start.',exact:true}).waitFor();
  await community.click();await page.locator('.community-menu').getByRole('link',{name:'Overview',exact:true}).click();await page.getByRole('heading',{name:'Better money habits, together.',exact:true}).waitFor();
+ assert.equal(await page.locator('main').getByRole('link',{name:/WhatsApp/}).getAttribute('href'),'https://wa.me/6282286819680');
  await page.getByRole('link',{name:'UangFlow, home',exact:true}).click();await page.getByRole('button',{name:'Sign in / Sign up',exact:false}).click();await page.getByRole('heading',{name:'Sign in to UangFlow',exact:true}).waitFor();await page.getByRole('button',{name:'Close',exact:true}).click();
  await page.getByRole('button',{name:'Explore demo',exact:true}).click();await page.waitForFunction(()=>location.hash==='#dashboard');
  for(const [name,route] of [['Overview','dashboard'],['Transactions','transactions'],['Budgets','budget'],['Savings','goals'],['Money coach','coach'],['CSV import','imports'],['Settings','settings']]){
